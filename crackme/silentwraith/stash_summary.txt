@@ -1,0 +1,40 @@
+active: 0
+stashed: 0
+pruned: 0
+unsat: 0
+errored: 0
+deadended: 1
+unconstrained: 0
+lowmem: 0
+found: 0
+avoid: 1
+===active: 0===
+===stashed: 0===
+===pruned: 0===
+===unsat: 0===
+===errored: 0===
+===deadended: 1===
+6295656
+dump[0]: b''
+dump[1]: b'you have unlocked the code: boom boom mathafuka\n'
+dump[2]: b''
+arg0: (`z(}1?$T$4 py" T}yx !~@`4 {*8@ p|9~ R0x |
+ 0`;\ty{r`=& !G~ areq@"(s@ ;`p@Cs@A!<f,   |
+ 0z (B"~mb1 d0@ d}" !|Pz  @@xY@~~B( ppx@@ |
+ 0z (@"~mb3 d0@ d}" !|Pz  @@xY@~~B( ppx@@ |
+ 
+-----
+===unconstrained: 0===
+===lowmem: 0===
+===found: 0===
+===avoid: 1===
+4198927
+dump[0]: b''
+dump[1]: b'you failed dumb mf\n'
+dump[2]: b''
+arg0: @@@ @  @ @  @@ @@@@@@    @ @  @@@@@@@@@  |
+    @  @@@@@ @@@@@  @@ @@ @@     @   @@@  |
+ @ @           @  @ @@  @ @@   @   @@@  @ |
+   @ @ @   @  @@@ @@ @ @ @  @  @  @@@@ @@ |
+ 
+-----
