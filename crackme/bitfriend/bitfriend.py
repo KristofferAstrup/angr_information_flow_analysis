@@ -17,7 +17,7 @@ def main():
     
     simgr.explore(find=0x401298)
 
-    util.write_stashes(simgr, [arg0])
+    util.write_stashes(simgr, [arg0], input_write_stashes=["deadended"])
     return 0
 
 if __name__ == "__main__":
