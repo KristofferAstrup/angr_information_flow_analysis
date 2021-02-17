@@ -5,7 +5,7 @@ int main() {
     printf("Enter size\n");
     scanf("%d", &n);
     int c = 0;
-    while(n != 0)
+    while(n != 100000)
     {
         n = n + 2;
         c++;
