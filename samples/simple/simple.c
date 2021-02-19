@@ -6,10 +6,10 @@ int main(int argc, char** argv) {
         printf("Four arguments expected.\n");
         return 1;
     }
-    int x = atoi(argv[1]);
-    int y = atoi(argv[2]);
-    int z = atoi(argv[3]);
-    if(z != 0 && x * y == z && z - (x*2) == y) {
+    char x = argv[1][0];
+    char y = argv[2][0];
+    char z = argv[3][0];
+    if(x - y == z) {
         printf("Perfect!\n");
         return 0;
     }
