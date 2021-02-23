@@ -1,10 +1,14 @@
 import angr
 import monkeyhex
+import inspect
 from angr import KnowledgeBase
-from angr.sim_variable import SimRegisterVariable
+from angr.sim_variable import SimRegisterVariable, SimConstantVariable
 from angr.code_location import CodeLocation
 from angr.analyses.ddg import ProgramVariable
-from angrutils import *
+from angr.knowledge_plugins.functions.function_manager import FunctionManager
+from angrutils import claripy
+import networkx as nx
+from networkx_query import search_nodes, search_edges
 import sys
 sys.path.append('../../')
 from customutil import util
@@ -16,21 +20,16 @@ def main():
     state = proj.factory.entry_state(args=['./explicit.out', arg0])
     simgr = proj.factory.simgr(state)
 
+    # print(proj.arch)
+    # return 0
+
     idfer = proj.analyses.Identifier()
     for funcInfo in idfer.func_info:
         if(funcInfo.name == "puts"):
             puts_func_info = funcInfo
-    simgr.explore(find=puts_func_info.addr)
-    found = simgr.found[0]
-    
-    #6295648 main procedure
-    #5242888 puts procedure
-    puts_procedure = proj._sim_procedures[5242888]
-    
-    print(found)
-    #sim = proj._sim_procedures[found.addr]
-    print()
 
+    #print(puts_func_info)
+    
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
         fail_fast=True, 
@@ -40,10 +39,99 @@ def main():
         context_sensitivity_level = 2
     )
 
-    # puts_func = cfg.get_any_node(puts_func_info.addr)
-    # puts_preds = cfg.get_all_predecessors(puts_func)
+    # fm = FunctionManager(proj.kb)
+    # func = fm.get_by_addr(addr=puts_func_info.addr)
+    # print(func)
+
+    # return 0
+    # putsnode = cfg.get_any_node(puts_func_info.addr)
+    # putscallernodes = cfg.model.get_predecessors(putsnode)
+    # print(putscallernodes)
 
     ddg = proj.analyses.DDG(cfg = cfg)
+
+    # print("-------")
+
+    # for n in ddg.data_graph.nodes:
+    #     attrs = vars(n)
+    #     print(', '.join("%s: %s" % item for item in attrs.items()))
+    #     location = n.location
+    #     break
+
+    print('-------------')
+
+    #for node in search_nodes(ddg.data_graph, {"contains": ["location", puts_func_info.addr]}):
+    #input_register_variables = []
+    for n in ddg.data_graph.nodes(data=True):
+        node = n[0]
+        # print(type(n[0].location))
+        # for a in dir(n[0].location):
+        #     print(n[0].location.block_addr)
+        # break
+        #print(n[0].location)
+        #if n[0].location == 5:
+        if node.location.ins_addr == 0x401158 and (not isinstance(node.variable, SimConstantVariable)):
+            #print(node)
+            #print('####')
+            #search(ddg, node.variable, 10)
+            #input_register_variables.append(node.variable)
+    
+            for definition in ddg.find_sources(node.variable, simplified_graph=False):
+                if definition.location.block_addr == 0x401149:
+                    search(ddg, definition.variable, 10)
+
+            print('-------------')
+            continue
+
+        # if(node.location.block_addr == puts_func_info.addr):
+        #     if(isinstance(node.variable, SimConstantVariable)):
+        #         continue
+        #     nodes.append(node)
+    # for var in input_register_variables:
+    #     search(ddg, var)
+        #try:
+        
+            # print(consumers)
+            # print('----')
+
+        #except:
+        #    pass
+
+
+    return 0
+
+def search (ddg, var, iters):
+    for definition in ddg.find_definitions(var, simplified_graph=False):
+        # if iters == 0:
+        #     print("TERM")
+        #     print(definition)
+        #     continue
+        # if iters != 0:
+            print('----')
+            print(definition)
+            print('--')
+            consumers = ddg.find_consumers(definition, simplified_graph=False)
+            for consumer in consumers:
+                print(consumer)
+                #print('==' + str(consumer.variable))
+                #search(ddg, consumer.variable, iters-1)
+            #if len(consumers) == 0:
+                #print("DONE")
+                #print(definition)
+
+if __name__ == "__main__":
+    main()
+
+    # for node in nodes:
+    #     print(node.variable)
+    #     defs = ddg.find_definitions(node, simplified_graph=True)
+    #     print(defs)
+
+    # print(location)
+
+    # print(ddg.get_predecessors(location))
+
+    #networkx_query.search_nodes(ddg.data_graph, )
 
     # vfg = proj.analyses.VFG(cfg = cfg)
     # ddg = proj.analyses.VSA_DDG(vfg = vfg)
@@ -64,12 +152,12 @@ def main():
 
     # print(len(ddg.data_graph.nodes))
 
-    cl = CodeLocation(
-        puts_procedure.addr, 
-        stmt_idx=None,
-        sim_procedure=puts_procedure)
-    ddg_preds = ddg.get_predecessors(cl)
-    print(ddg_preds)
+    # cl = CodeLocation(
+    #     puts_procedure.addr, 
+    #     stmt_idx=None,
+    #     sim_procedure=puts_procedure)
+    # ddg_preds = ddg.get_predecessors(cl)
+    # print(ddg_preds)
 
     # for pred in puts_preds:
     #     return_site_addr = pred.addr + pred.size
@@ -108,8 +196,3 @@ def main():
     # )  
 
     #util.write_stashes(simgr)
-
-    return 0
-
-if __name__ == "__main__":
-    main()
