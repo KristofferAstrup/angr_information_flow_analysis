@@ -1,0 +1,24 @@
+active: 0
+stashed: 0
+pruned: 0
+unsat: 0
+errored: 0
+deadended: 0
+unconstrained: 0
+found: 1
+avoid: 0
+===active: 0===
+===stashed: 0===
+===pruned: 0===
+===unsat: 0===
+===errored: 0===
+===deadended: 0===
+===unconstrained: 0===
+===found: 1===
+no: 0
+4198729
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+===avoid: 0===

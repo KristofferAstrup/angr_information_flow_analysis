@@ -1,0 +1,30 @@
+active: 0
+stashed: 0
+pruned: 0
+unsat: 0
+errored: 0
+deadended: 0
+unconstrained: 0
+lowmem: 2
+found: 0
+avoid: 0
+===active: 0===
+===stashed: 0===
+===pruned: 0===
+===unsat: 0===
+===errored: 0===
+===deadended: 0===
+===unconstrained: 0===
+===lowmem: 2===
+no: 0
+4198910
+dump[1]: b'Enter size\n'
+dump[2]: b''
+-----
+no: 1
+4198910
+dump[1]: b'Enter size\n'
+dump[2]: b''
+-----
+===found: 0===
+===avoid: 0===
