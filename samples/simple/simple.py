@@ -6,13 +6,18 @@ sys.path.append('../../')
 from customutil import util
 
 def main():
-    proj = angr.Project('simple_64.out', load_options={'auto_load_libs':True})
+    proj = angr.Project('simple.out', load_options={'auto_load_libs':True})
     sym_arg_size = 8
     arg1 = claripy.BVS('arg1', 8*sym_arg_size)
     arg2 = claripy.BVS('arg2', 8*sym_arg_size)
     arg3 = claripy.BVS('arg3', 8*sym_arg_size)
 
-    state = proj.factory.entry_state(argc=4, args=['./simple_64.out', arg1, arg2, arg3])
+    argv = [proj.filename]
+    argv.append(arg1)
+    argv.append(arg2)
+    argv.append(arg3)
+
+    state = proj.factory.entry_state(args=argv)#, arg2, arg3])
     simgr = proj.factory.simgr(state)
     cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, fail_fast=True, starts=[simgr.active[0].addr], initial_state=state)
 
@@ -21,7 +26,7 @@ def main():
 
     simgr.explore(find=lambda s: b'Perfect' in s.posix.dumps(1))
 
-    util.write_stashes(simgr, args=[arg1, arg2, arg3], input_write_stashes=["found"])
+    util.write_stashes(simgr, args=[arg1], input_write_stashes=["found"])
 
     return 0
 

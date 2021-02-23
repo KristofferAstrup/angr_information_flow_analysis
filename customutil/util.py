@@ -1,5 +1,7 @@
 import angr
 from angrutils import *
+import matplotlib.pyplot as plt
+import networkx as nx
 
 def cfgs(proj, simgr, state):
     try:
@@ -12,20 +14,19 @@ def cfgs(proj, simgr, state):
     try:
         print("--CFGEmulated--")
         cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=2, resolve_indirect_jumps=True)
-        plot_cfg(cfg, "cfg_emul", "pdf")  
+        plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
     except Exception as e:
         print(e)
     try:
         print("--CFGFast--")
         cfg_fast = proj.analyses.CFGFast()
-        plot_cfg(cfg_fast, "cfg_fast", "pdf")  
+        plot_cfg(cfg_fast, "cfg_fast", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)  
         print("Plotted to cfg_fast.pdf")
     except Exception as e:
         print(e)
 
-def write_stashes(simgr, args):
-    filename = "stash_summary.txt"
+def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[]):
     file = open(filename,"w+") 
     print('--stashes--')
     for key in simgr.stashes:
@@ -35,22 +36,23 @@ def write_stashes(simgr, args):
     print('writing...')
     for key in simgr.stashes:
         writeline(file, "===" + str(key) + ": " + str(len(simgr.stashes[key])) + "===")
-        for stash in simgr.stashes[key]:
+        for c in range(len(simgr.stashes[key])):
+            stash = simgr.stashes[key][c]
+            writeline(file, "no: " + str(c))
             writeline(file, str(stash.addr))
-            writeline(file, "dump[0]: " + str(stash.posix.dumps(0)))
-            writeline(file, "dump[1]: " + str(stash.posix.dumps(1)))
-            writeline(file, "dump[2]: " + str(stash.posix.dumps(2)))
+            for d in range(3):
+                try:
+                    writeline(file, "dump["+str(d)+"]: " + str(stash.posix.dumps(d)))
+                except Exception as e:
+                    print("dump["+str(d)+"]: eval failure")
             for i in range(len(args)):
                 writeline(file, "arg" + str(i) + " " + get_str_from_arg(stash, args[i]))
+                if(key in input_write_stashes):
+                    inputfile = open(key + str(c) + "_input" + str(i),"wb+")
+                    inputfile.write(stash.solver.eval(args[i], cast_to=bytes))
+                    inputfile.close()
             writeline(file, "-----")
-        if(key == "found" and len(simgr.stashes[key]) > 0):
-            foundstate = simgr.stashes[key][0]
-            for i in range(len(args)):
-                foundfile = open("found_input" + str(i),"wb+")
-                foundfile.write(foundstate.solver.eval(args[i], cast_to=bytes))
-                foundfile.close()
     print('written to ' + filename)
-            
     file.close()
 
 def get_str_from_arg(state, arg):
@@ -74,3 +76,13 @@ def gather_evals(state, arg, max):
 
 def writeline(file, string):
     file.write(string + "\n")
+
+def writefile(string, filename):
+    file = open(filename,"w+") 
+    file.write(string)
+    file.close()
+
+def draw_ddg(ddg):
+    g = ddg.simplified_data_graph
+    nx.draw(g, with_labels=True)
+    plt.show()

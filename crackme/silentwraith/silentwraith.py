@@ -14,10 +14,6 @@ def main():
 
     state = proj.factory.entry_state(args=['./lockcode', arg0])
 
-    for byte in arg0.chop(8):
-        state.add_constraints(byte >= '\x20') # ' '
-        state.add_constraints(byte <= '\x7e') # '~'
-
     simgr = proj.factory.simgr(state)
     cfg = proj.analyses.CFGFast()
     
@@ -27,7 +23,7 @@ def main():
     simgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=1024*2))
 
     simgr.explore(avoid=lambda s: (b'failed' in s.posix.dumps(1)))
-    write_stashes(simgr, [arg0])
+    write_stashes(simgr, args=[arg0])
     if(simgr.found):
         print('--success--')
         for found in simgr.found:

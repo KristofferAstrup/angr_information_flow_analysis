@@ -8,13 +8,12 @@ from customutil import util
 
 def main():
     proj = angr.Project('MarsAnalytica', load_options={'auto_load_libs':False})
-    sym_arg_size = 20
-    arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./MarsAnalytica', arg0])
-    simgr = proj.factory.simgr(state, save_unconstrained=True)
-    simgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=1024*2))
-    simgr.explore(find=0x400926)
-    util.write_stashes(simgr, [arg0])
+    state = proj.factory.entry_state()
+    simgr = proj.factory.simgr(state)
+    #simgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=1024*2))
+    #simgr.explore(avoid=lambda s: b'ACCESS DENIED' in s.posix.dumps(1))
+    #simgr.run()
+    #util.write_stashes(simgr)
     return 0
 
 if __name__ == "__main__":
