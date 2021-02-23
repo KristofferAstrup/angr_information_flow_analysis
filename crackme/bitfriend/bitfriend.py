@@ -15,9 +15,9 @@ def main():
 
     simgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=1024*2))
     
-    simgr.explore(find=0x401298)
+    simgr.explore(find=lambda s: b'admin' in s.posix.dumps(1))
 
-    util.write_stashes(simgr, [arg0], input_write_stashes=["deadended"])
+    util.write_stashes(simgr, args=[arg0], input_write_stashes=["found"])
     return 0
 
 if __name__ == "__main__":
