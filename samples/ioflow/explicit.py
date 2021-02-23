@@ -62,6 +62,8 @@ def main():
 
     #for node in search_nodes(ddg.data_graph, {"contains": ["location", puts_func_info.addr]}):
     #input_register_variables = []
+
+    
     for n in ddg.data_graph.nodes(data=True):
         node = n[0]
         # print(type(n[0].location))
@@ -70,14 +72,21 @@ def main():
         # break
         #print(n[0].location)
         #if n[0].location == 5:
-        if node.location.ins_addr == 0x401158 and (not isinstance(node.variable, SimConstantVariable)):
+        
+        if "None" not in str(n[0].variable) and n[0].location.sim_procedure: #and n[0].location.ins_addr
+            #print(dir(n[0]))
+            #print(n[0].initial)
+            #print(n[0].location.sim_procedure)
+            #print(hex(n[0].location.ins_addr))
+            #print(n[0].variable)
+
             #print(node)
             #print('####')
             #search(ddg, node.variable, 10)
             #input_register_variables.append(node.variable)
-    
-            for definition in ddg.find_sources(node.variable, simplified_graph=False):
-                if definition.location.block_addr == 0x401149:
+            #print(ddg.find_consumers(node.variable, simplified_graph=False))
+            for definition in ddg.find_definitions(node.variable, simplified_graph=False):
+                #if definition.location.block_addr == 0x401149:
                     search(ddg, definition.variable, 10)
 
             print('-------------')
@@ -110,13 +119,13 @@ def search (ddg, var, iters):
             print('----')
             print(definition)
             print('--')
-            consumers = ddg.find_consumers(definition, simplified_graph=False)
+            consumers = ddg.find_sources(definition, simplified_graph=False)
             for consumer in consumers:
                 print(consumer)
                 #print('==' + str(consumer.variable))
-                #search(ddg, consumer.variable, iters-1)
-            #if len(consumers) == 0:
-                #print("DONE")
+                search(ddg, consumer.variable, iters-1)
+            if len(consumers) == 0:
+                print("DONE")
                 #print(definition)
 
 if __name__ == "__main__":

@@ -83,6 +83,8 @@ def writefile(string, filename):
     file.close()
 
 def draw_ddg(ddg):
-    g = ddg.simplified_data_graph
+    g = ddg.graph
+    fig = plt.figure(figsize=(200,200))
     nx.draw(g, with_labels=True)
-    plt.show()
+    fig.savefig("ddg_matplt_lib.pdf", dpi=5)
+    #plt.show()
