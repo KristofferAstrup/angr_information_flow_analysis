@@ -37,7 +37,7 @@ def main():
         starts=[state.addr], 
         initial_state=state,
         state_add_options=angr.options.refs,
-        context_sensitivity_level = 2
+        context_sensitivity_level = 4
     )
     #print(dir(cfg.functions.values()))
     
@@ -51,11 +51,17 @@ def main():
     for n in cfg.kb.functions.callgraph.edges(data=True):
         print(hex(n[0])+", "+hex(n[1])+", "+str(n[2]))
 
-    vfg = proj.analyses.VFG(cfg = cfg, function_start=0x401060)
+    vfg = proj.analyses.VFG(cfg = cfg, function_start=proj.entry,context_sensitivity_level=4, 
+        interfunction_level=4, 
+        remove_options={ angr.options.OPTIMIZE_IR })
+    print(vfg.graph.nodes())
     #util.draw_ddg()
     #print(vfg.graph.nodes())
-    #ddg = proj.analyses.VSA_DDG(vfg = vfg, keep_data=True)
-    #print(ddg.get_all_nodes())
+    util.draw_ddg(vfg)
+    #ddg_v2 = proj.analyses.VSA_DDG(vfg = vfg, keep_data=True)
+    #util.draw_ddg(ddg_v2)
+
+    #print(ddg_v2.graph.nodes())
     # variable_nodes = []
     # for n in ddg.data_graph.nodes(data=True):
     #     #print(dir(n[0].location.sim_procedure))
@@ -68,13 +74,17 @@ def main():
     #         variable_nodes.append(n[0])
     puts = None
     for n in ddg.graph.nodes(data=True):
-        if "puts" in str(n):
+        if n[0].ins_addr in {0x40117e}:
+            print("PUTS")
+            print(n)
             puts = n[0]
     
     print("----NODES----")
     for n in ddg.graph.nodes(data=True):
-        if n[0].ins_addr in {0x401158, 0x401155, 0x401140, 0x401060,0x401149,0x4010c0,0x401060}:
+        if n[0].ins_addr in {0x401158, 0x401155, 0x401140, 0x401060,0x401149,0x4010c0,0x401060, 0x401163, 0x401181}:
+            print("Normal")
             try:
+                print(hex(n[0].ins_addr))
                 print(nx.dijkstra_path(ddg.graph,n[0],puts))
             except:
                 print("No path")
