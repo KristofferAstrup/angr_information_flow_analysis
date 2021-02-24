@@ -6,7 +6,7 @@ from angr.sim_variable import SimRegisterVariable, SimConstantVariable
 from angr.code_location import CodeLocation
 from angr.analyses.ddg import ProgramVariable
 from angr.knowledge_plugins.functions.function_manager import FunctionManager
-from angrutils import claripy
+from angrutils import *
 import networkx as nx
 from networkx_query import search_nodes, search_edges
 import sys
@@ -17,10 +17,11 @@ def main():
     proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./explicit.out', arg0])
+    arg1 = claripy.BVS('arg1', 8*sym_arg_size)
+    state = proj.factory.entry_state(args=['./explicit.out', arg0, arg1])
     simgr = proj.factory.simgr(state)
 
-    # print(proj.arch)
+    # print(proj.arch.argument_registers)#proj.arch.Register(argument=True))
     # return 0
 
     idfer = proj.analyses.Identifier()
@@ -39,6 +40,13 @@ def main():
         context_sensitivity_level = 2
     )
 
+    cdg = proj.analyses.CDG(cfg=cfg)
+    plot_cdg(cdg=cdg, cfg=cfg, fname="cdg", format="pdf")
+    return
+
+    simgr.explore(find=0x401149)
+    state = simgr.active[0]
+
     # fm = FunctionManager(proj.kb)
     # func = fm.get_by_addr(addr=puts_func_info.addr)
     # print(func)
@@ -48,7 +56,9 @@ def main():
     # putscallernodes = cfg.model.get_predecessors(putsnode)
     # print(putscallernodes)
 
-    ddg = proj.analyses.DDG(cfg = cfg)
+    ddg = proj.analyses.DDG(cfg = cfg, start=state.addr, block_addrs=[0x401149])
+    # util.draw_ddg(ddg)
+    # return 
 
     # print("-------")
 
