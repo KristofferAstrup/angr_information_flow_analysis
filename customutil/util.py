@@ -83,8 +83,44 @@ def writefile(string, filename):
     file.close()
 
 def draw_ddg(ddg):
-    g = ddg.graph
+    draw_graph(ddg.graph, "ddg.pdf")
+    
+def draw_graph(graph, fname="graph.pdf"):
     fig = plt.figure(figsize=(200,200))
-    nx.draw(g, with_labels=True)
-    fig.savefig("ddg_matplt_lib.pdf", dpi=5)
-    #plt.show()
+    nx.draw(graph, with_labels=True)
+    fig.savefig(fname, dpi=5)
+
+def find_explicit(proj, ddg, lowAddresses=[], highAddresses=[], regBlacklist=None):
+    if regBlacklist == None:
+        regBlacklist = [proj.arch.ip_offset]
+    targetNodes = []
+    for n in ddg.data_graph.nodes(data=True):
+        if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
+            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+                continue
+            targetNodes.append(n[0])
+
+    for n in ddg.data_graph.nodes(data=True):
+        if n[0].location.ins_addr in highAddresses and not isinstance(n[0].variable, SimConstantVariable):
+            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+                continue
+            for targetNode in targetNodes:
+                try:
+                    yield nx.dijkstra_path(ddg.data_graph,n[0],targetNode)
+                except:
+                    pass #No path
+
+def find_ddg_arg_nodes(proj, ddg):
+    arg_regs = proj.arch.argument_registers
+    ent_reg_vals = proj.arch.entry_register_values
+    reg_names = ['argv', 'argc']
+    reg_offs = []
+    for p, v in ent_reg_vals.items():
+        if v in reg_names:
+            off, size = proj.arch.registers[p]
+            reg_offs.append(off)
+
+    for n in ddg.data_graph.nodes(data=True):
+        if n[0].location.block_addr == proj.entry and isinstance(n[0].variable, SimRegisterVariable):
+            if n[0].variable.reg in reg_offs:
+                yield n[0]

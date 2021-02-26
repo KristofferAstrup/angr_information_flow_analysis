@@ -15,16 +15,8 @@ from customutil import util
 
 def main():
     proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
-    sym_arg_size = 15
-    arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    arg1 = claripy.BVS('arg1', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./explicit.out', arg0, arg1])
+    state = proj.factory.entry_state()
     simgr = proj.factory.simgr(state)
-
-    idfer = proj.analyses.Identifier()
-    for funcInfo in idfer.func_info:
-        if(funcInfo.name == "puts"):
-            puts_func_info = funcInfo
 
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
@@ -32,12 +24,11 @@ def main():
         starts=[state.addr], 
         initial_state=state,
         state_add_options=angr.options.refs,
-        context_sensitivity_level = 2
+        context_sensitivity_level = 4
     )
 
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
-    plot_cdg(cfg, cdg, fname="cdg", format="pdf")
 
     print('--------')
 
@@ -46,8 +37,21 @@ def main():
 
     for path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
         print(path)
+        for n in path:
+           print(hex(n.location.ins_addr))
 
     return 0
 
 if __name__ == "__main__":
     main()
+
+
+
+# for n in util.find_ddg_arg_nodes(proj, ddg):
+#         highAddresses.append(n.location.ins_addr)
+
+
+   # idfer = proj.analyses.Identifier()
+    # for funcInfo in idfer.func_info:
+    #     if(funcInfo.name == "puts"):
+    #         puts_func_info = funcInfo
