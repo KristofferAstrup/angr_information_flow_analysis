@@ -110,7 +110,9 @@ def find_explicit(proj, ddg, lowAddresses=[], highAddresses=[], regBlacklist=Non
                 except:
                     pass #No path
 
-def find_ddg_arg_nodes(proj, ddg):
+def find_ddg_arg_nodes(proj, ddg, addr=None):
+    if addr == None:
+        addr = proj.entry
     arg_regs = proj.arch.argument_registers
     ent_reg_vals = proj.arch.entry_register_values
     reg_names = ['argv', 'argc']
@@ -119,8 +121,9 @@ def find_ddg_arg_nodes(proj, ddg):
         if v in reg_names:
             off, size = proj.arch.registers[p]
             reg_offs.append(off)
-
+    print(reg_offs)
+    print('---')
     for n in ddg.data_graph.nodes(data=True):
-        if n[0].location.block_addr == proj.entry and isinstance(n[0].variable, SimRegisterVariable):
+        if n[0].location.block_addr == addr and isinstance(n[0].variable, SimRegisterVariable):
             if n[0].variable.reg in reg_offs:
                 yield n[0]
