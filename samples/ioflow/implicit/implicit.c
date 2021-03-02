@@ -6,5 +6,5 @@ int main(int argc, char** argv) {
     {
     	str = "highcontext";
     }
-    printf("%s\n", "hello");
+    printf("%s\n", str);
 }
