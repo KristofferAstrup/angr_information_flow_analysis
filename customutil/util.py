@@ -90,27 +90,44 @@ def draw_graph(graph, fname="graph.pdf"):
     nx.draw(graph, with_labels=True)
     fig.savefig(fname, dpi=5)
 
-def find_explicit(proj, ddg, lowAddresses=[], highAddresses=[], regBlacklist=None):
+def find_explicit(proj, ddg, lowAddresses=[], lowNodes=None, highAddresses=[], regBlacklist=None):
     if regBlacklist == None:
         regBlacklist = [proj.arch.ip_offset]
     targetNodes = []
-    for n in ddg.data_graph.nodes(data=True):
-        if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
-            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
-                continue
-            targetNodes.append(n[0])
+
+    if lowNodes:
+        targetNodes = lowNodes
+    else:
+        for n in ddg.data_graph.nodes(data=True):
+            if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
+                if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+                    continue
+                targetNodes.append(n[0])
 
     for n in ddg.data_graph.nodes(data=True):
         if n[0].location.ins_addr in highAddresses and not isinstance(n[0].variable, SimConstantVariable):
-            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+            if n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist:
                 continue
+            sub = ddg.data_sub_graph(n[0], simplified=False) #killing_edges=True)
             for targetNode in targetNodes:
                 try:
-                    yield nx.dijkstra_path(ddg.data_graph,n[0],targetNode)
+                    yield nx.dijkstra_path(sub,n[0],targetNode)
                 except:
                     pass #No path
 
-def find_ddg_arg_nodes(proj, ddg, addr=None):
+def find_procedure_nodes(proj, ddg, sim_proc_name, regBlacklist=None):
+    if regBlacklist == None:
+        regBlacklist = [proj.arch.ip_offset]
+    for n in ddg.data_graph.nodes(data=True):
+        if not isinstance(n[0].variable, SimConstantVariable)\
+        and n[0].location\
+        and n[0].location.sim_procedure\
+        and n[0].location.sim_procedure.display_name == sim_proc_name:
+            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+                continue
+            yield n[0]
+
+def find_ddg_program_arg_nodes(proj, ddg, addr=None):
     if addr == None:
         addr = proj.entry
     arg_regs = proj.arch.argument_registers
@@ -127,3 +144,33 @@ def find_ddg_arg_nodes(proj, ddg, addr=None):
         if n[0].location.block_addr == addr and isinstance(n[0].variable, SimRegisterVariable):
             if n[0].variable.reg in reg_offs:
                 yield n[0]
+
+def find_ddg_nodes(ddg, ins_addr):
+    for n in ddg.data_graph.nodes(data=True):
+        if n[0].location and n[0].location.ins_addr == ins_addr:
+            yield n[0]
+
+def hexlist(seq):
+    return list(map(lambda x: hex(x), seq))
+
+def link_similar_ins_regs(ddg):
+    groupedRegNodes = {}
+    for n in ddg.data_graph.nodes(data=True):
+        if isinstance(n[0].variable, SimRegisterVariable):
+            area = n[0].location.sim_procedure.display_name if n[0].location.sim_procedure else str(hex(n[0].location.ins_addr))
+            key = str(n[0].variable.reg)+":"+area
+            groupedRegNodes.setdefault(key, []).append(n[0])
+    for k in groupedRegNodes:
+        nodes = groupedRegNodes[k]
+        for i in range(len(nodes)):
+            if i==0:
+                continue
+            ddg.data_graph.add_edge(nodes[i-1], nodes[i])
+            ddg.data_graph.add_edge(nodes[i], nodes[i-1])
+
+def get_arg_regs(proj):
+    for arg_reg_offset in proj.arch.argument_registers:
+        for k in proj.arch.registers:
+            offset, size = proj.arch.registers[k]
+            if offset == arg_reg_offset:
+                yield (k, offset, size)

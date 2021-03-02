@@ -34,9 +34,7 @@ def main():
 
     lowAddresses = {0x401172}
     highAddresses = {0x401158, 0x401155}
-    # for n in util.find_ddg_arg_nodes(proj, ddg):
-    #     highAddresses.append(n.location.ins_addr)
-
+    
     for path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
         print(path)
         for n in path:
