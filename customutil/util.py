@@ -174,3 +174,40 @@ def get_arg_regs(proj):
             offset, size = proj.arch.registers[k]
             if offset == arg_reg_offset:
                 yield (k, offset, size)
+
+def get_sim_proc_reg_args(proj, sim_proc_name):
+    for k in proj._sim_procedures:
+        if proj._sim_procedures[k].display_name == sim_proc_name:
+            return proj._sim_procedures[k].cc.args
+
+def get_sim_proc_addr(proj, sim_proc_name):
+    for k in proj._sim_procedures:
+        if proj._sim_procedures[k].display_name == sim_proc_name:
+            return proj._sim_procedures[k].addr
+
+def get_sim_proc_function_wrapper_addrs(proj, sim_proc_name):
+    sim_addr = get_sim_proc_addr(proj, sim_proc_name)
+    for l in proj.kb.callgraph.in_edges(sim_addr):
+        f, t = l
+        yield f
+
+def get_function_callers(proj, cdg, function_addr):
+    preds = []
+    for n in cdg.graph.nodes():
+        if n.addr == function_addr:
+            for pred in n.predecessors:
+                preds.append(pred)
+    return preds
+
+def get_final_ins_for_cdg_node(cdg_node):
+    return cdg_node.instruction_addrs[len(cdg_node.instruction_addrs)-1]
+
+#cfg_node is type CFGENode and is also used in cdg
+def find_first_reg_occurences_in_cdg(cdg, cfg_node, reg_offset):
+    for ins in cfg_node.instruction_addrs:
+        #reversively iterate the node and search (via the DDG) for an 
+        #instructions with a SimRegisterVariable with a .reg equal 
+        #to the reg_offset
+
+#find branches and test if they create a high context
+#return the instruction adresses of the high context

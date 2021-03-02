@@ -31,8 +31,8 @@ def main():
         context_sensitivity_level = 10
     )
 
-    print(list(util.get_arg_regs(proj)))
-    return 0
+    #print(list(util.get_arg_regs(proj)))
+    #return 0
 
     # cfg = proj.analyses.CFG(resolve_indirect_jumps=True, 
     #                            cross_references=True, 
@@ -43,10 +43,21 @@ def main():
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
 
-    n = list(util.find_ddg_nodes(ddg,0x401180))[0]
-    sub_ddg = ddg.data_sub_graph(n, simplified=False)
-    util.draw_graph(sub_ddg, fname="sub.pdf")
+    # n = list(util.find_ddg_nodes(ddg,0x401180))[0]
+    # sub_ddg = ddg.data_sub_graph(n, simplified=False)
+    # util.draw_graph(sub_ddg, fname="sub.pdf")
+    # return 0
+
+    for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, "puts"):
+        for caller in util.get_function_callers(proj, cdg, wrap_addr):
+            print(dir(caller))
+            break
+
+    # cg = proj.kb.callgraph
+    # util.draw_graph(cg, fname="callgraph.pdf")
+
     return 0
+
     #print(list(util.find_explicit(proj, ddg, [0x401190], [0x401180])))
 
     #return 0
