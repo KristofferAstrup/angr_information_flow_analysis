@@ -14,10 +14,9 @@ sys.path.append('../../../')
 from customutil import util
 
 def main():
-    proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('nothing.out', load_options={'auto_load_libs':False})
     state = proj.factory.entry_state()
     simgr = proj.factory.simgr(state)
-
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
         fail_fast=True, 
@@ -26,19 +25,25 @@ def main():
         state_add_options=angr.options.refs,
         context_sensitivity_level = 4
     )
-
+    main_node = None
+    for n in cfg.graph.nodes:
+        if "main" == n.name:
+            main_node = n
+            break
+    
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
 
     print('--------')
 
-    lowAddresses = {0x401172}
+    lowAddresses = {0x401175}
     highAddresses = {0x401158, 0x401155}
+    # for arg_node in util.find_ddg_arg_nodes(proj, ddg, main_node.addr):
+    #     highAddresses.append(arg_node.location.ins_addr)
+    # print(highAddresses)
     
     for path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
         print(path)
-        for n in path:
-           print(hex(n.location.ins_addr))
 
     return 0
 
@@ -47,7 +52,8 @@ if __name__ == "__main__":
 
 
 
-
+# for n in util.find_ddg_arg_nodes(proj, ddg):
+#         highAddresses.append(n.location.ins_addr)
 
 
    # idfer = proj.analyses.Identifier()
