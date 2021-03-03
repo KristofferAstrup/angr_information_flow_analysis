@@ -90,25 +90,22 @@ def draw_graph(graph, fname="graph.pdf"):
     nx.draw(graph, with_labels=True)
     fig.savefig(fname, dpi=5)
 
-def find_explicit(proj, ddg, lowAddresses=[], lowNodes=None, highAddresses=[], regBlacklist=None):
+def find_explicit(proj, ddg, lowAddresses=[], highAddresses=[], regBlacklist=None):
     if regBlacklist == None:
         regBlacklist = [proj.arch.ip_offset]
     targetNodes = []
-
-    if lowNodes:
-        targetNodes = lowNodes
-    else:
-        for n in ddg.data_graph.nodes(data=True):
-            if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
-                if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
-                    continue
-                targetNodes.append(n[0])
+    
+    for n in ddg.data_graph.nodes(data=True):
+        if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
+            if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
+                continue
+            targetNodes.append(n[0])
 
     for n in ddg.data_graph.nodes(data=True):
         if n[0].location.ins_addr in highAddresses and not isinstance(n[0].variable, SimConstantVariable):
             if n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist:
                 continue
-            sub = ddg.data_sub_graph(n[0], simplified=False) #killing_edges=True)
+            sub = ddg.data_sub_graph(n[0], simplified=False)
             for targetNode in targetNodes:
                 try:
                     yield nx.dijkstra_path(sub,n[0],targetNode)
@@ -172,9 +169,9 @@ def get_ddg_reg_var(ddg, ins_addr, reg_offset):
     for n in ddg.data_graph.nodes(data=True):
         if n[0].location and n[0].location.ins_addr and\
             n[0].location.ins_addr == ins_addr and\
-            isinstance(n[0].variable, SimRegisterVariable) and\
-            n[0].variable.reg == reg_offset:
-            return n
+            isinstance(n[0].variable, SimRegisterVariable):
+            if n[0].variable.reg == reg_offset:
+                return n
     return None
 
 def get_arg_regs(proj):
@@ -211,7 +208,7 @@ def get_final_ins_for_cdg_node(cdg_node):
 
 #cfg_node is type CFGENode and is also used in cdg
 def find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset):
-    for ins_addr in cfg_node.instruction_addrs.reverse():
+    for ins_addr in reversed(list(cfg_node.instruction_addrs)):
         if ins_offset != None and ins_addr > ins_offset:
             continue
         n = get_ddg_reg_var(ddg, ins_addr, reg_offset)
@@ -219,34 +216,52 @@ def find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset)
             return n
     return None
 
-def find_first_reg_occurences_from_cdg_node(cdg, ddg, cfg_node, reg_offset, ins_offset):
+def find_first_reg_occurences_from_cdg_node(cdg, ddg, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
     occ = find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset)
     if occ != None:
         return [occ]
+    if cfg_node.addr == stop_block_addr:
+        return []
     occs = []
     for n in cfg_node.predecessors:
-        occ = find_first_reg_occurences_from_cdg_node(cdg, ddg, n, reg_offset, None)
+        occ = find_first_reg_occurences_from_cdg_node(cdg, ddg, n, reg_offset, stop_block_addr, None)
         occs.append(occ)
     return occs
 
-def test_high_branch_context(cdg, highAddresses=[]):
-    branch_ins = None
-    for n in cdg.graph.nodes(data=True):
-        if n[0].block_id and n[0].block_id.addr == branch_addr:
-            branch_ins = n[0].instruction_addrs[len(n[0].instruction_addrs)-1]
-    for path in util.find_explicit(proj, ddg, [branch_ins], highAddresses):
+def test_high_branch_context(proj, cdg, ddg, cdg_node, highAddresses=[], regBlacklist=None):
+    branch_ins = cdg_node[0].instruction_addrs[len(cdg_node[0].instruction_addrs)-1]
+    for path in list(find_explicit(proj, ddg, [branch_ins], highAddresses)):
         return True #High context
     return False #Low context (not proven high)
 
-def find_implicit_high_ins_addr(cdg, cdg_node, highAddresses=[]):
-    targets = cdg.get_guardians(cdg_node)
+def find_implicit_high_ins_addr(proj, cdg, ddg, cdg_node, highAddresses=[], regBlacklist=None):
+    targets = cdg_node[0].successors
     if len(targets) < 2:
         if len(targets) == 1:
             return find_branches(cdg, targets[0])
         return []
-    isHigh = test_high_branch_context(cdg, highAddresses)
-    
-    #TODO: Should be recursive!!
+    isHigh = test_high_branch_context(proj, cdg, ddg, cdg_node, highAddresses, regBlacklist=None)
+    if not isHigh:
+        return []
+
+    #Naive approach for now, simply mark first branch block instructions as high (taking the addrs from the longer block)
+    implicit_highs = []
+    start_index = 0
+    for i in range(min(len(targets[0].instruction_addrs),len(targets[1].instruction_addrs))):
+        if list(reversed(targets[0].instruction_addrs))[i] == list(reversed(targets[1].instruction_addrs))[i]:
+            start_index += 1
+    print(start_index)
+    for target in targets:
+        for i in range(start_index, len(target.instruction_addrs)):
+            implicit_highs.append(list(reversed(target.instruction_addrs))[i])
+
+    return implicit_highs
+
+def find_cdg_node(cdg, block_addr):
+    for n in cdg.graph.nodes(data=True):
+        if n[0].addr == block_addr:
+            return n
+    return None
 
 #find branches and test if they create a high context
 #return the instruction adresses of the high context

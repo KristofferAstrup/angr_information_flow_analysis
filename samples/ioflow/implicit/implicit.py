@@ -31,87 +31,42 @@ def main():
         context_sensitivity_level = 10
     )
 
-    #print(list(util.get_arg_regs(proj)))
-    #return 0
-
-    # cfg = proj.analyses.CFG(resolve_indirect_jumps=True, 
-    #                            cross_references=True, 
-    #                            force_complete_scan=False, 
-    #                            normalize=True, 
-    #                            symbols=True)
-
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
 
-    # n = list(util.find_ddg_nodes(ddg,0x401180))[0]
-    # sub_ddg = ddg.data_sub_graph(n, simplified=False)
-    # util.draw_graph(sub_ddg, fname="sub.pdf")
-    # return 0
-
-    for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, "puts"):
-        for caller in util.get_function_node(cdg, wrap_addr).predecessors:
-            print(dir(caller))
-            break
-
-    # cg = proj.kb.callgraph
-    # util.draw_graph(cg, fname="callgraph.pdf")
-
-    return 0
-
-    #print(list(util.find_explicit(proj, ddg, [0x401190], [0x401180])))
-
-    #return 0
-    #print(dir(ddg))
-    #return 0
-    # print(dir(cdg))
-    # return 0
-
-    # plot_cdg(cfg, cdg, fname="cdg_2", format="pdf")
-    # plot_ddg_data(ddg.data_graph, fname="ddg_2", format="pdf")
-    # return 0
-    
-    # main_func = None
-    # for funcInfo in proj.analyses.Identifier().func_info:
-    #     if(funcInfo.name == "main"):
-    #         main_func = funcInfo
-
-    # res = angr.analyses.reaching_definitions.ReachingDefinitionsAnalysis(
-    #     subject = main_func,
-    #     func_graph = main_func.graph,
-    #     cc = main_func.calling_convention,
-    #     observation_points = [("fuckdig", 0x0040118b, 0)],
-    #     dep_graph = dep_graph.DepGraph(),
-    #     function_handler=
-    # )
-
-    highAddresses = [0x401155, 0x401158]
-
-    # branch_addr = 0x401149
-    # branch_ins = None
-    # for n in cdg.graph.nodes(data=True):
-    #     if n[0].block_id and n[0].block_id.addr == branch_addr:
-    #         branch_ins = n[0].instruction_addrs[len(n[0].instruction_addrs)-1]
-    #         print(hex(branch_ins))
-    # print("BRANCH: " + str(branch_ins))
-    # print('-----')
-
     util.link_similar_ins_regs(ddg)
 
-    isHighContext = False
-    for path in util.find_explicit(proj, ddg, [branch_ins], highAddresses):
-        isHighContext = True
+    mainAddress = 0x401149
+    highAddresses = [0x401155, 0x401158]
 
-    print('-------------------------------')
+    puts_proc = "puts"
 
-    func_nodes = list(util.find_procedure_nodes(proj, ddg, "puts"))
+    arg_regs = util.get_sim_proc_reg_args(proj, puts_proc)
+
+    subject_addrs = []
+    for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, puts_proc):
+        for caller in util.get_function_node(cdg, wrap_addr).predecessors:
+            for reg in arg_regs:
+                offset, size = proj.arch.registers[reg.reg_name]
+                for occ_node in util.find_first_reg_occurences_from_cdg_node(cdg, ddg, caller, offset, mainAddress):
+                    subject_addrs.append(occ_node[0].location.ins_addr)
+    print('Subjects:')
+    print(util.hexlist(subject_addrs))
     
-    for path in util.find_explicit(proj, ddg, lowNodes=func_nodes, highAddresses=[0x401179, 0x401180]):
+    print('Explicits:')
+    for path in util.find_explicit(proj, ddg, subject_addrs, highAddresses):
+        print("Explicit flow:")
         print(path)
 
-    print('----DEN SKAL VÆRE TOM-----')
-    for path in util.find_explicit(proj, ddg, lowNodes=func_nodes, highAddresses=highAddresses):
-        print(path)
+    print('Implicits:')
+    main_node = util.find_cdg_node(cdg, mainAddress)
+    for implicit_high in util.find_implicit_high_ins_addr(proj, cdg, ddg, main_node, highAddresses):
+        #print("subject: " + str(subject_addrs) + " | highs: " + str([hex(implicit_high)]))
+        for path in util.find_explicit(proj, ddg, subject_addrs, [implicit_high]):
+            print("Implicit flow:")
+            print(path)
 
+    return 0
 
 if __name__ == "__main__":
     main()
