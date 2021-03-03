@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 def cfgs(proj, simgr, state):
+    cfg_emul = None
     try:
         print("--CFG--")
         cfg = proj.analyses.CFG()
@@ -16,6 +17,7 @@ def cfgs(proj, simgr, state):
         cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=2, resolve_indirect_jumps=True)
         plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
+        cfg_emul = cfg
     except Exception as e:
         print(e)
     try:
@@ -25,6 +27,16 @@ def cfgs(proj, simgr, state):
         print("Plotted to cfg_fast.pdf")
     except Exception as e:
         print(e)
+    return cfg_emul
+
+def draw_everything(proj, simgr, state):
+    cfg = cfgs(proj, simgr, state)
+    print("--DDG--")
+    ddg = proj.analyses.DDG(cfg = cfg)
+    plot_ddg_data(ddg.data_graph, "ddg.pdf", format="pdf")
+    print("--CDG--")
+    cdg = proj.analyses.CDG(cfg = cfg)
+    plot_cdg(cfg, cdg, "cdg.pdf", format="pdf")
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[]):
     file = open(filename,"w+") 
@@ -135,12 +147,16 @@ def find_ddg_program_arg_nodes(proj, ddg, addr=None):
         if v in reg_names:
             off, size = proj.arch.registers[p]
             reg_offs.append(off)
-    print(reg_offs)
-    print('---')
+            print(v + " -> " + p + ": " + str(off))
     for n in ddg.data_graph.nodes(data=True):
-        if n[0].location.block_addr == addr and isinstance(n[0].variable, SimRegisterVariable):
-            if n[0].variable.reg in reg_offs:
-                yield n[0]
+        if n[0].location.sim_procedure and n[0].location.sim_procedure.display_name == '__libc_start_main': #n[0].location.block_addr == addr:# and isinstance(n[0].variable, SimRegisterVariable):
+            if isinstance(n[0].variable, SimConstantVariable):
+                continue
+            try:
+                if n[0].variable.reg and n[0].variable.reg in reg_offs:
+                    yield n[0]
+            except:
+                pass
 
 def find_ddg_nodes(ddg, ins_addr):
     for n in ddg.data_graph.nodes(data=True):
@@ -179,7 +195,7 @@ def get_arg_regs(proj):
         for k in proj.arch.registers:
             offset, size = proj.arch.registers[k]
             if offset == arg_reg_offset:
-                yield (k, offset, size)
+                yield {"name": k, "offset": offset, "size": size}
 
 def get_sim_proc_reg_args(proj, sim_proc_name):
     for k in proj._sim_procedures:
@@ -250,7 +266,6 @@ def find_implicit_high_ins_addr(proj, cdg, ddg, cdg_node, highAddresses=[], regB
     for i in range(min(len(targets[0].instruction_addrs),len(targets[1].instruction_addrs))):
         if list(reversed(targets[0].instruction_addrs))[i] == list(reversed(targets[1].instruction_addrs))[i]:
             start_index += 1
-    print(start_index)
     for target in targets:
         for i in range(start_index, len(target.instruction_addrs)):
             implicit_highs.append(list(reversed(target.instruction_addrs))[i])
