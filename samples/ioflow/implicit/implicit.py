@@ -21,7 +21,7 @@ def main():
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./implicit.out', arg0])
     simgr = proj.factory.simgr(state)
-
+    
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
         fail_fast=True, 
@@ -49,7 +49,7 @@ def main():
     # return 0
 
     for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, "puts"):
-        for caller in util.get_function_callers(proj, cdg, wrap_addr):
+        for caller in util.get_function_node(cdg, wrap_addr).predecessors:
             print(dir(caller))
             break
 
@@ -86,22 +86,19 @@ def main():
 
     highAddresses = [0x401155, 0x401158]
 
-    branch_addr = 0x401149
-    branch_ins = None
-    for n in cdg.graph.nodes(data=True):
-        if n[0].block_id and n[0].block_id.addr == branch_addr:
-            branch_ins = n[0].instruction_addrs[len(n[0].instruction_addrs)-1]
-            print(hex(branch_ins))
-    print("BRANCH: " + str(branch_ins))
-    print('-----')
+    # branch_addr = 0x401149
+    # branch_ins = None
+    # for n in cdg.graph.nodes(data=True):
+    #     if n[0].block_id and n[0].block_id.addr == branch_addr:
+    #         branch_ins = n[0].instruction_addrs[len(n[0].instruction_addrs)-1]
+    #         print(hex(branch_ins))
+    # print("BRANCH: " + str(branch_ins))
+    # print('-----')
 
     util.link_similar_ins_regs(ddg)
 
     isHighContext = False
     for path in util.find_explicit(proj, ddg, [branch_ins], highAddresses):
-        # for step in path:
-        #     print(hex(step.location.ins_addr))
-        # print('---')
         isHighContext = True
 
     print('-------------------------------')

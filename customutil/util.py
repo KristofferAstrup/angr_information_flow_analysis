@@ -168,6 +168,15 @@ def link_similar_ins_regs(ddg):
             ddg.data_graph.add_edge(nodes[i-1], nodes[i])
             ddg.data_graph.add_edge(nodes[i], nodes[i-1])
 
+def get_ddg_reg_var(ddg, ins_addr, reg_offset):
+     for n in ddg.data_graph.nodes(data=True):
+        if n[0].location and n[0].location.ins_addr and\
+            n[0].location.ins_addr == ins_addr and\
+            isinstance(n[0].variable, SimRegisterVariable)\
+            n[0].variable.reg == reg_offset:
+            return n
+    return None
+
 def get_arg_regs(proj):
     for arg_reg_offset in proj.arch.argument_registers:
         for k in proj.arch.registers:
@@ -191,23 +200,53 @@ def get_sim_proc_function_wrapper_addrs(proj, sim_proc_name):
         f, t = l
         yield f
 
-def get_function_callers(proj, cdg, function_addr):
-    preds = []
+def get_function_node(cdg, function_addr):
     for n in cdg.graph.nodes():
         if n.addr == function_addr:
-            for pred in n.predecessors:
-                preds.append(pred)
-    return preds
+            return n
+    return None
 
 def get_final_ins_for_cdg_node(cdg_node):
     return cdg_node.instruction_addrs[len(cdg_node.instruction_addrs)-1]
 
 #cfg_node is type CFGENode and is also used in cdg
-def find_first_reg_occurences_in_cdg(cdg, cfg_node, reg_offset):
-    for ins in cfg_node.instruction_addrs:
-        #reversively iterate the node and search (via the DDG) for an 
-        #instructions with a SimRegisterVariable with a .reg equal 
-        #to the reg_offset
+def find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset):
+    for ins_addr in cfg_node.instruction_addrs.reverse():
+        if ins_offset != None and ins_addr > ins_offset:
+            continue
+        n = get_ddg_reg_var(ddg, ins_addr, reg_offset)
+        if n != None:
+            return n
+    return None
+
+def find_first_reg_occurences_from_cdg_node(cdg, ddg, cfg_node, reg_offset, ins_offset):
+    occ = find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset)
+    if occ != None:
+        return [occ]
+    occs = []
+    for n in cfg_node.predecessors:
+        occ = find_first_reg_occurences_from_cdg_node(cdg, ddg, n, reg_offset, None)
+        occs.append(occ)
+    return occs
+
+def test_high_branch_context(cdg, highAddresses=[]):
+    branch_ins = None
+    for n in cdg.graph.nodes(data=True):
+        if n[0].block_id and n[0].block_id.addr == branch_addr:
+            branch_ins = n[0].instruction_addrs[len(n[0].instruction_addrs)-1]
+    for path in util.find_explicit(proj, ddg, [branch_ins], highAddresses):
+        return True #High context
+    return False #Low context (not proven high)
+
+def find_implicit_high_ins_addr(cdg, cdg_node, highAddresses=[]):
+    targets = cdg.get_guardians(cdg_node):
+    if len(targets) < 2:
+        if len(targets) == 1:
+            return find_branches(cdg, targets[0])
+        return []
+    isHigh = test_high_branch_context(cdg, highAddresses)
+    return []
+    #TODO: Should be recursive!!
 
 #find branches and test if they create a high context
 #return the instruction adresses of the high context
