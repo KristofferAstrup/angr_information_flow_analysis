@@ -169,10 +169,10 @@ def link_similar_ins_regs(ddg):
             ddg.data_graph.add_edge(nodes[i], nodes[i-1])
 
 def get_ddg_reg_var(ddg, ins_addr, reg_offset):
-     for n in ddg.data_graph.nodes(data=True):
+    for n in ddg.data_graph.nodes(data=True):
         if n[0].location and n[0].location.ins_addr and\
             n[0].location.ins_addr == ins_addr and\
-            isinstance(n[0].variable, SimRegisterVariable)\
+            isinstance(n[0].variable, SimRegisterVariable) and\
             n[0].variable.reg == reg_offset:
             return n
     return None
@@ -239,13 +239,13 @@ def test_high_branch_context(cdg, highAddresses=[]):
     return False #Low context (not proven high)
 
 def find_implicit_high_ins_addr(cdg, cdg_node, highAddresses=[]):
-    targets = cdg.get_guardians(cdg_node):
+    targets = cdg.get_guardians(cdg_node)
     if len(targets) < 2:
         if len(targets) == 1:
             return find_branches(cdg, targets[0])
         return []
     isHigh = test_high_branch_context(cdg, highAddresses)
-    return []
+    
     #TODO: Should be recursive!!
 
 #find branches and test if they create a high context
