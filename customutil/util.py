@@ -98,7 +98,7 @@ def draw_ddg(ddg):
     draw_graph(ddg.graph, "ddg.pdf")
     
 def draw_graph(graph, fname="graph.pdf"):
-    fig = plt.figure(figsize=(200,200))
+    fig = plt.figure(figsize=(100,100))
     nx.draw(graph, with_labels=True)
     fig.savefig(fname, dpi=5)
 
