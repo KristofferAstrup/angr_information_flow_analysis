@@ -7,7 +7,9 @@ from angr.knowledge_plugins.key_definitions.constants import OP_AFTER, OP_BEFORE
 from angr.sim_variable import SimRegisterVariable, SimConstantVariable
 from angr.code_location import CodeLocation
 from angr.analyses.ddg import ProgramVariable
+from angr.knowledge_plugins.key_definitions.atoms import Atom
 from angr.knowledge_plugins.functions.function_manager import FunctionManager
+from argument_resolver.handlers import handler_factory, StdioHandlers
 from angrutils import *
 import networkx as nx
 import angr.analyses.reaching_definitions.dep_graph as dep_graph
@@ -31,16 +33,67 @@ def main():
         ('insn', call_to_puts, OP_AFTER)
     ]
     main_func = proj.kb.functions.function(name='main')
-    print(main_func)
-    print(dir(proj.analyses))
+    puts_func = proj.kb.functions.function(addr=0x500008)
+    print(puts_func)
+    #print(main_func)
+    #print(dir(proj.analyses))
     rda = proj.analyses.ReachingDefinitions(
         subject = main_func,
         #func_graph = main_func.graph,
         cc = main_func.calling_convention,
-        #dep_graph = dep_graph.DepGraph(),
+        dep_graph = dep_graph.DepGraph(),
         observation_points=observation_points
         #function_handler=Handler(proj)
     )
+
+    parameter_atom = Atom.from_argument(
+        puts_func.calling_convention.arg_locs()[0],
+        proj.arch.registers
+    )
+
+    rdi_definition = list(
+        handler.sink_atom_defs[parameter_atom]
+    )[0]
+
+
+    # reaches = rda.get_reaching_definitions_by_insn(call_to_puts, OP_BEFORE)
+    # #print(dir(reaches))
+    # reach_defs = reaches.get_definitions(parameter_atom)
+    # reach_def = list(reach_defs)[0]
+
+    # print(reach_def)
+    # print(dir(reach_def))
+    # print(reach_def.data)
+    # for el in reach_def.data:
+    #     print(hex(el))
+
+    #closure = rda.dep_graph.transitive_closure(reach_def)
+    #print(closure)
+
+    # reg_def = None
+    # for reg in reaches.register_definitions:
+    #     if reg.start == 72:
+    #         reg_def = reg
+    # print(reg_def)
+    #print(dir(rda.dep_graph))
+
+    # for n in rda.dep_graph.nodes():
+    #     print(n)
+    #     print(dir(n))
+    #     print(n.data)
+    #     print(n.atom)
+    #     break
+
+    
+
+    #util.draw_graph(rda.dep_graph.graph, fname="dep_graph.pdf")
+
+    # 
+    # for regdef in res.register_definitions:
+    #     #print(dir(regdef))
+    #     print(regdef.start)
+    # print(res)
+    return 0
 
     vulnerable_function_first_block = rda.project.factory.block(main_func.addr).vex
     state_before_puts_call = rda.observed_results[observation_points[0]]

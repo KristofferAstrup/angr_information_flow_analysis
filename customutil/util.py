@@ -14,7 +14,14 @@ def cfgs(proj, simgr, state):
         print(e)
     try:
         print("--CFGEmulated--")
-        cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=2, resolve_indirect_jumps=True)
+        cfg = proj.analyses.CFGEmulated(
+            keep_state=True, 
+            fail_fast=True, 
+            starts=[state.addr], 
+            initial_state=state,
+            state_add_options=angr.options.refs,
+            context_sensitivity_level = 10
+        )
         plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
         cfg_emul = cfg
@@ -33,10 +40,12 @@ def draw_everything(proj, simgr, state):
     cfg = cfgs(proj, simgr, state)
     print("--DDG--")
     ddg = proj.analyses.DDG(cfg = cfg)
-    plot_ddg_data(ddg.data_graph, "ddg.pdf", format="pdf")
+    plot_ddg_data(ddg.data_graph, "ddg", format="pdf", asminst=True, vexinst=False)
+    print("Plotted to ddg.pdf")
     print("--CDG--")
     cdg = proj.analyses.CDG(cfg = cfg)
-    plot_cdg(cfg, cdg, "cdg.pdf", format="pdf")
+    plot_cdg(cfg, cdg, "cdg", format="pdf")
+    print("Plotted to cdg.pdf")
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[]):
     file = open(filename,"w+") 
@@ -159,12 +168,64 @@ def find_ddg_program_arg_nodes(proj, ddg, addr=None):
                 pass
 
 def find_ddg_nodes(ddg, ins_addr):
+    for n in ddg.data_graph.nodes:
+        if n.location and n.location.ins_addr == ins_addr:
+            yield n
+
+def get_all_ancestors_of_ddg_ins(ddg, nodes):
+    ancestors = []
+    for n in nodes:
+        ancestors += nx.ancestors(ddg.data_graph, n)
+    return ancestors
+
+def clear_constant_ddg_nodes(ddg):
+    constant_nodes = []
     for n in ddg.data_graph.nodes(data=True):
-        if n[0].location and n[0].location.ins_addr == ins_addr:
-            yield n[0]
+        if isinstance(n[0].variable, SimConstantVariable):
+            constant_nodes.append(n[0])
+    ddg.data_graph.remove_nodes_from(constant_nodes)
+
+def filter_ddg_node_whitelist(ddg, node_whitelist):
+    filtered_nodes = []
+    for n in ddg.data_graph.nodes:
+        if n in node_whitelist:
+            continue
+        filtered_nodes.append(n)
+    ddg.data_graph.remove_nodes_from(filtered_nodes)
+
+def filter_ddg_block_whitelist(ddg, block_addr_whitelist):
+    filtered_nodes = []
+    for n in ddg.data_graph.nodes:
+        if n.location.sim_procedure:
+            continue
+        if n.location and n.location.block_addr in block_addr_whitelist:
+            continue
+        filtered_nodes.append(n)
+    ddg.data_graph.remove_nodes_from(filtered_nodes)
+
+def find_cdg_block_nodes(cdg, block_addr):
+    for n in cdg.graph.nodes(data=True):
+        if n[0].block and n[0].block.addr == block_addr:
+            yield n
+
+def find_all_descendants_block_address(cfg, cdg_node):
+    for n in nx.descendants(cfg.graph, cdg_node[0]):
+        if n.block:
+            yield n.block.addr
 
 def hexlist(seq):
     return list(map(lambda x: hex(x), seq))
+
+def link_similar_mem(ddg):
+    groupedNodes = {}
+    for n in ddg.data_graph.nodes(data=True):
+        if isinstance(n[0].variable, SimMemoryVariable) and (not n[0].location.sim_procedure):
+            groupedNodes.setdefault(str(hex(n[0].location.ins_addr)), []).append(n[0])
+    for k in groupedNodes:
+        if(len(groupedNodes[k]) < 2):
+            continue
+        print(k)
+        print(groupedNodes[k])
 
 def link_similar_ins_regs(ddg):
     groupedRegNodes = {}
@@ -254,7 +315,7 @@ def find_implicit_high_ins_addr(proj, cdg, ddg, cdg_node, highAddresses=[], regB
     targets = cdg_node[0].successors
     if len(targets) < 2:
         if len(targets) == 1:
-            return find_branches(cdg, targets[0])
+            return find_implicit_high_ins_addr(proj, cdg, ddg, targets, highAddresses, regBlacklist)
         return []
     isHigh = test_high_branch_context(proj, cdg, ddg, cdg_node, highAddresses, regBlacklist=None)
     if not isHigh:
