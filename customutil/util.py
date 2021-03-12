@@ -2,6 +2,8 @@ import angr
 from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
+import pydot
+from networkx.drawing.nx_pydot import graphviz_layout
 
 def cfgs(proj, simgr, state):
     cfg_emul = None
@@ -14,7 +16,7 @@ def cfgs(proj, simgr, state):
         print(e)
     try:
         print("--CFGEmulated--")
-        cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=2, resolve_indirect_jumps=True)
+        cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=5, resolve_indirect_jumps=True)
         plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
         cfg_emul = cfg
@@ -33,10 +35,10 @@ def draw_everything(proj, simgr, state):
     cfg = cfgs(proj, simgr, state)
     print("--DDG--")
     ddg = proj.analyses.DDG(cfg = cfg)
-    plot_ddg_data(ddg.data_graph, "ddg.pdf", format="pdf")
+    plot_ddg_data(ddg.data_graph, "ddg", format="pdf")
     print("--CDG--")
     cdg = proj.analyses.CDG(cfg = cfg)
-    plot_cdg(cfg, cdg, "cdg.pdf", format="pdf")
+    plot_cdg(cfg, cdg, "cdg", format="pdf")
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[]):
     file = open(filename,"w+") 
@@ -100,6 +102,12 @@ def draw_ddg(ddg):
 def draw_graph(graph, fname="graph.pdf"):
     fig = plt.figure(figsize=(100,100))
     nx.draw(graph, with_labels=True)
+    fig.savefig(fname, dpi=5)
+
+def draw_tree(tree, fname="tree.pdf"):
+    fig = plt.figure(figsize=(100,100))
+    pos = graphviz_layout(tree, prog="dot")
+    nx.draw(tree, pos,with_labels=True)
     fig.savefig(fname, dpi=5)
 
 def find_explicit(proj, ddg, lowAddresses=[], highAddresses=[], regBlacklist=None):

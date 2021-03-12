@@ -30,6 +30,10 @@ def main():
         ('insn', call_to_puts, OP_BEFORE),
         ('insn', call_to_puts, OP_AFTER)
     ]
+    print(proj.kb.functions.keys())
+    for k in proj.kb.functions.values():
+        print(k)
+
     main_func = proj.kb.functions.function(name='main')
     print(main_func)
     #print(dir(proj.analyses))
