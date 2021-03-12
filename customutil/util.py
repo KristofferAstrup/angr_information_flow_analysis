@@ -463,3 +463,29 @@ def get_externals(super_dep_graph):
 def get_leafs(graph):
     leaf_nodes = [node for node in graph.nodes() if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
     return leaf_nodes
+
+#########IMPLICIT################
+def find_branch_pdom(cdg,node1, node2):
+    n1_to_n2=False
+    n2_to_n1=False
+    try:
+        path = nx.dijkstra_path(cdg.get_post_dominators(),node1,node2)
+        n1_to_n2=True
+    except:
+        pass #No path
+
+    try:
+        path = nx.dijkstra_path(cdg.get_post_dominators(),node2,node1)
+        n2_to_n1=True
+    except:
+        pass #No path
+
+    if n1_to_n2:
+        print("Node1 postdominates Node2")
+        return node1
+    elif n2_to_n1:
+        return node2
+        print("Node2 postdominates Node1")
+    else:
+        return None
+        print("Node1 and Node2 does not postdominate each other")

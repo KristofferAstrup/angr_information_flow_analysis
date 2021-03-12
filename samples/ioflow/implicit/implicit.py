@@ -72,7 +72,7 @@ def main():
     branch = cfg.model.get_all_nodes(addr=0x401149)
     print(nodes)
     print(nodes2)
-    test_nodes(cdg, cfg, branch[0],nodes[0],nodes2[0])
+    test_nodes(cdg,nodes[0],nodes2[0])
     return
 
     util.link_similar_ins_regs(ddg)
@@ -107,19 +107,7 @@ def main():
 
     return 0
 
-def test_nodes(cdg,cfg,branch,node1, node2):
-    # cdg.get_post_dominators()
-    # util.draw_tree(angr.utils.graph.PostDominators(cfg.graph,node1).dom,fname="Node1.pdf")
-    # util.draw_tree(angr.utils.graph.PostDominators(cfg.graph,node2).dom,fname="Node2.pdf")
-    # util.draw_tree(angr.utils.graph.PostDominators(cfg.graph,branch).dom,fname="Branch.pdf")
-    # util.draw_graph(cfg.graph)
-    # util.draw_tree(cdg.get_post_dominators(), fname="postdom.pdf")
-    # print("Node1Deps")
-    # print(cdg.get_guardians(node1))
-    # print("Node2Deps")
-    # print(cdg.get_guardians(node2))
-    # print("BranchDeps")
-    # print(cdg.get_guardians(branch))
+def test_nodes(cdg,node1, node2):
     n1_to_n2=False
     n2_to_n1=False
     try:
@@ -136,9 +124,12 @@ def test_nodes(cdg,cfg,branch,node1, node2):
 
     if n1_to_n2:
         print("Node1 postdominates Node2")
+        return node1
     elif n2_to_n1:
+        return node2
         print("Node2 postdominates Node1")
     else:
+        return None
         print("Node1 and Node2 does not postdominate each other")
 
   
