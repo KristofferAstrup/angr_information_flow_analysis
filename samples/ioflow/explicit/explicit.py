@@ -44,13 +44,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-   # idfer = proj.analyses.Identifier()
-    # for funcInfo in idfer.func_info:
-    #     if(funcInfo.name == "puts"):
-    #         puts_func_info = funcInfo

@@ -32,23 +32,22 @@ def main():
         ('insn', call_to_puts, OP_BEFORE),
         ('insn', call_to_puts, OP_AFTER)
     ]
-    print(proj.kb.functions.keys())
-    for k in proj.kb.functions.values():
-        print(k)
-
     main_func = proj.kb.functions.function(name='main')
+<<<<<<< HEAD
     puts_func = proj.kb.functions.function(addr=0x500008)
     print(puts_func)
-    #print(dir(proj.analyses))
     #print(main_func)
+=======
+    print(main_func)
+>>>>>>> b7582a9a6d6b57ea22cfa19365809fa48d0506d4
     #print(dir(proj.analyses))
     rda = proj.analyses.ReachingDefinitions(
         subject = main_func,
         #func_graph = main_func.graph,
         cc = main_func.calling_convention,
         dep_graph = dep_graph.DepGraph(),
-        #observation_points=observation_points,
-        observe_all=True
+<<<<<<< HEAD
+        observation_points=observation_points
         #function_handler=Handler(proj)
     )
 
@@ -101,9 +100,19 @@ def main():
     # print(res)
     return 0
 
+    vulnerable_function_first_block = rda.project.factory.block(main_func.addr).vex
+    state_before_puts_call = rda.observed_results[observation_points[0]]
+    state_after_puts_call = rda.observed_results[observation_points[1]]
+=======
+        #observation_points=observation_points,
+        observe_all=True
+        #function_handler=Handler(proj)
+    )
+
     # vulnerable_function_first_block = rda.project.factory.block(main_func.addr).vex
     # state_before_puts_call = rda.observed_results[observation_points[0]]
     # state_after_puts_call = rda.observed_results[observation_points[1]]
+>>>>>>> b7582a9a6d6b57ea22cfa19365809fa48d0506d4
 
     # stack_variables_before_call = state_before_puts_call.stack_definitions.get_all_variables()
     # stack_variables_after_call = state_after_puts_call.stack_definitions.get_all_variables()

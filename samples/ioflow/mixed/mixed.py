@@ -21,9 +21,6 @@ def main():
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./mixed.out', arg0])
     simgr = proj.factory.simgr(state)
-    
-    util.draw_everything(proj, simgr, state)
-    return 
 
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
@@ -31,43 +28,36 @@ def main():
         starts=[state.addr], 
         initial_state=state,
         state_add_options=angr.options.refs,
-        context_sensitivity_level = 10
+        context_sensitivity_level = 0
     )
-
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
 
-    util.link_similar_ins_regs(ddg)
-
-    mainAddress = 0x401149
-    highAddresses = [0x401155, 0x401158]
+    high_addrs = [0x4011ac, 0x4011af]
+    start_addr = 0x4011a0
 
     puts_proc = "puts"
-
     arg_regs = util.get_sim_proc_reg_args(proj, puts_proc)
-
     subject_addrs = []
     for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, puts_proc):
         for caller in util.get_function_node(cdg, wrap_addr).predecessors:
             for reg in arg_regs:
                 offset, size = proj.arch.registers[reg.reg_name]
-                for occ_node in util.find_first_reg_occurences_from_cdg_node(cdg, ddg, caller, offset, mainAddress):
+                for occ_node in util.find_first_reg_occurences_from_cdg_node(cdg, ddg, caller, offset, start_addr):
                     subject_addrs.append(occ_node[0].location.ins_addr)
-    print('Subjects:')
-    print(util.hexlist(subject_addrs))
-    
-    print('Explicits:')
-    for path in util.find_explicit(proj, ddg, subject_addrs, highAddresses):
-        print("Explicit flow:")
-        print(path)
 
-    print('Implicits:')
-    main_node = util.find_cdg_node(cdg, mainAddress)
-    for implicit_high in util.find_implicit_high_ins_addr(proj, cdg, ddg, main_node, highAddresses):
-        #print("subject: " + str(subject_addrs) + " | highs: " + str([hex(implicit_high)]))
-        for path in util.find_explicit(proj, ddg, subject_addrs, [implicit_high]):
-            print("Implicit flow:")
-            print(path)
+    start_node = util.find_cfg_node(cfg, start_addr)
+    func_addrs = util.get_unique_reachable_function_addresses(cfg, start_node)
+    super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
+
+    util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])
+    
+    util.draw_graph(super_dep_graph.graph, fname="super_rda.pdf")
+
+    for path in util.find_explicit(super_dep_graph, subject_addrs, high_addrs):
+        print('----Path-----')
+        for step in path:
+            print(hex(step.codeloc.ins_addr))
 
     return 0
 
