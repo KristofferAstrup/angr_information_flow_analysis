@@ -18,13 +18,6 @@ def cfgs(proj, simgr, state):
     try:
         print("--CFGEmulated--")
         cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=5, resolve_indirect_jumps=True)
-            keep_state=True, 
-            fail_fast=True, 
-            starts=[state.addr], 
-            initial_state=state,
-            state_add_options=angr.options.refs,
-            context_sensitivity_level = 10
-        )
         plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
         cfg_emul = cfg
