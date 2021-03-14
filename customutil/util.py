@@ -269,12 +269,14 @@ def get_sim_proc_addr(proj, sim_proc_name):
     for k in proj._sim_procedures:
         if proj._sim_procedures[k].display_name == sim_proc_name:
             return proj._sim_procedures[k].addr
+    return None
 
 def get_sim_proc_function_wrapper_addrs(proj, sim_proc_name):
     sim_addr = get_sim_proc_addr(proj, sim_proc_name)
-    for l in proj.kb.callgraph.in_edges(sim_addr):
-        f, t = l
-        yield f
+    if sim_addr != None:
+        for l in proj.kb.callgraph.in_edges(sim_addr):
+            f, t = l
+            yield f
 
 def get_function_node(cdg, function_addr):
     for n in cdg.graph.nodes():
@@ -306,12 +308,6 @@ def find_first_reg_occurences_from_cdg_node(cdg, ddg, cfg_node, reg_offset, stop
         occ = find_first_reg_occurences_from_cdg_node(cdg, ddg, n, reg_offset, stop_block_addr, None)
         occs.append(occ)
     return occs
-
-def test_high_branch_context(proj, cdg, ddg, cdg_node, highAddresses=[], regBlacklist=None):
-    branch_ins = cdg_node[0].instruction_addrs[len(cdg_node[0].instruction_addrs)-1]
-    for path in list(find_explicit(proj, ddg, [branch_ins], highAddresses)):
-        return True #High context
-    return False #Low context (not proven high)
 
 def find_implicit_high_ins_addr(proj, cdg, ddg, cdg_node, highAddresses=[], regBlacklist=None):
     targets = cdg_node[0].successors
@@ -465,27 +461,73 @@ def get_leafs(graph):
     return leaf_nodes
 
 #########IMPLICIT################
-def find_branch_pdom(cdg,node1, node2):
-    n1_to_n2=False
-    n2_to_n1=False
+def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, highAddresses)
+    high_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, highAddresses)
+    for addr in high_addrs:
+        for path in find_explicit(super_dep_graph, lowAddresses, [addr]):
+            yield path
+
+#Find all high context node instruction addresses:
+def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
+    addrs = []
+    for n in find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
+        addrs.extend(n.ins_addrs)
+    return addrs
+
+#Test if branch node creates a high context
+def test_high_branch_context(super_dep_graph, cfg_node, highAddresses):
+    branch_ins = cfg_node.instruction_addrs[len(cfg_node.instruction_addrs)-1]
+    highContext = False #Default low context (not proven high)
+    for path in list(find_explicit(super_dep_graph, [branch_ins], highAddresses)):
+        highContext = True #High context
+        break
+    return highContext 
+    
+def accumulate_nodes(cfg_node, blacklist, resultlist):
+    blacklist.append(cfg_node)
+    resultlist.append(cfg_node)
+    for child in cfg_node.successors:
+        if child in blacklist:
+            continue
+        accumulate_nodes(child, blacklist, resultlist)
+
+#Find all high nodes recursively in cfg starting from given node
+def find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
+    targets = cfg_node.successors
+    if len(targets) == 0:
+        return []
+    if len(targets) == 1:
+        return find_high_nodes(super_dep_graph, post_dom_tree, targets[0], highAddresses)
+    high = test_high_branch_context(super_dep_graph, cfg_node, highAddresses)
+    if not high:
+        leftHighs = find_high_nodes(super_dep_graph, post_dom_tree, targets[0], highAddresses)
+        rightHighs = find_high_nodes(super_dep_graph, post_dom_tree, targets[1], highAddresses)
+        return leftHighs + rightHighs
+    dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
+    if dominator == None: #No post-domintor
+        #Find lowest common ancestor of subjects
+        dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[1], subjects[2])
+    high_nodes = []
+    blacklist = [dominator]
+    for subject in subjects:
+        accumulate_nodes(subject, blacklist, high_nodes)
+    rec = find_high_nodes(super_dep_graph, post_dom_tree, dominator, highAddresses)
+    return list(set(high_nodes)) + rec
+
+def find_branch_pdom(post_dom_tree, node1, node2):
     try:
-        path = nx.dijkstra_path(cdg.get_post_dominators(),node1,node2)
-        n1_to_n2=True
+        path = nx.dijkstra_path(post_dom_tree,node1,node2)
+        #Node1 postdominates Node2
+        return (node1, [node2])
     except:
         pass #No path
 
     try:
-        path = nx.dijkstra_path(cdg.get_post_dominators(),node2,node1)
-        n2_to_n1=True
+        path = nx.dijkstra_path(post_dom_tree,node2,node1)
+        #Node2 postdominates Node1
+        return (node2, [node1])
     except:
         pass #No path
 
-    if n1_to_n2:
-        print("Node1 postdominates Node2")
-        return node1
-    elif n2_to_n1:
-        return node2
-        print("Node2 postdominates Node1")
-    else:
-        return None
-        print("Node1 and Node2 does not postdominate each other")
+    #No postdominance
+    return (None, [node1, node2])

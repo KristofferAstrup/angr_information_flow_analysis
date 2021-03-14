@@ -30,29 +30,34 @@ def main():
         state_add_options=angr.options.refs,
         context_sensitivity_level = 10
     )
-    #cfg = proj.analyses.CFGFast()
 
-    #ddg = proj.analyses.DDG(cfg = cfg)
-    #cdg = proj.analyses.CDG(cfg = cfg)
-
-    #util.draw_everything(proj, simgr, state)
-
-    # for arg in util.get_arg_regs(proj):
-    #     print(arg)
+    ddg = proj.analyses.DDG(cfg = cfg)
+    cdg = proj.analyses.CDG(cfg = cfg)
     
+    start_addr = 0x401149
+    # puts_proc = "printf"
+    # arg_regs = util.get_sim_proc_reg_args(proj, puts_proc)
+    # subject_addrs = []
+    # for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, puts_proc):
+    #     for caller in util.get_function_node(cdg, wrap_addr).predecessors:
+    #         for reg in arg_regs:
+    #             offset, size = proj.arch.registers[reg.reg_name]
+    #             for occ_node in util.find_first_reg_occurences_from_cdg_node(cdg, ddg, caller, offset, start_addr):
+    #                 subject_addrs.append(occ_node[0].location.ins_addr)
 
-    # func = proj.kb.functions.function(addr=0x401149)
-    # print(func)
-    # rda = proj.analyses.ReachingDefinitions(
-    #     subject = func,
-    #     cc = func.calling_convention,
-    #     dep_graph = dep_graph.DepGraph(),
-    #     observe_all=True
-    # )
-    # print(dir(rda.dep_graph))
-    # util.draw_graph(rda.dep_graph.graph, fname="rda.pdf")
+    start_node = util.find_cfg_node(cfg, start_addr)
+    func_addrs = util.get_unique_reachable_function_addresses(cfg, start_node)
+    super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
 
-    #return 0
+    util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])
+    post_dom_tree = cdg.get_post_dominators()
+
+    start_node = cfg.model.get_all_nodes(addr=0x401149)[0]
+    high_addrs = [0x401155, 0x401158]
+
+    high_nodes = util.find_high_nodes(super_dep_graph, post_dom_tree, start_node, high_addrs)
+    
+    print(high_nodes)
 
 if __name__ == "__main__":
     main()
