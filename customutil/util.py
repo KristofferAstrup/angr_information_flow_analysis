@@ -287,28 +287,6 @@ def get_function_node(cdg, function_addr):
 def get_final_ins_for_cdg_node(cdg_node):
     return cdg_node.instruction_addrs[len(cdg_node.instruction_addrs)-1]
 
-#cfg_node is type CFGENode and is also used in cdg
-def find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset):
-    for ins_addr in reversed(list(cfg_node.instruction_addrs)):
-        if ins_offset != None and ins_addr > ins_offset:
-            continue
-        n = get_ddg_reg_var(ddg, ins_addr, reg_offset)
-        if n != None:
-            return n
-    return None
-
-def find_first_reg_occurences_from_cdg_node(cdg, ddg, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
-    occ = find_first_reg_occurences_in_cdg_node(ddg, cfg_node, reg_offset, ins_offset)
-    if occ != None:
-        return [occ]
-    if cfg_node.addr == stop_block_addr:
-        return []
-    occs = []
-    for n in cfg_node.predecessors:
-        occ = find_first_reg_occurences_from_cdg_node(cdg, ddg, n, reg_offset, stop_block_addr, None)
-        occs.append(occ)
-    return occs
-
 def find_implicit_high_ins_addr(proj, cdg, ddg, cdg_node, highAddresses=[], regBlacklist=None):
     targets = cdg_node[0].successors
     if len(targets) < 2:
@@ -374,16 +352,13 @@ def get_super_dep_graph(proj, function_addrs):
         rda_dep_graph = rda.dep_graph
     return rda_dep_graph
 
-#find possible paths using the super rda dependence graph
-def find_dep_graph_node(super_dep_graph, ins_addr):
-    for n in super_dep_graph.graph.nodes():
-        if n.codeloc and n.codeloc.ins_addr == ins_addr:
-            return n
-
 def find_dep_graph_nodes(super_dep_graph, ins_addrs):
     for ins_addr in ins_addrs:
-        yield find_dep_graph_node(super_dep_graph, ins_addr)
-
+        for n in super_dep_graph.graph.nodes():
+            if n.codeloc and n.codeloc.ins_addr == ins_addr:
+                yield n
+       
+#find possible paths using the super rda dependence graph
 def find_explicit(super_dep_graph, lowAddresses, highAddresses):
     low_nodes = list(find_dep_graph_nodes(super_dep_graph, lowAddresses))
     high_nodes = list(find_dep_graph_nodes(super_dep_graph, highAddresses))
@@ -393,6 +368,10 @@ def find_explicit(super_dep_graph, lowAddresses, highAddresses):
                 yield nx.dijkstra_path(super_dep_graph.graph, high_node, low_node)
             except:
                 pass #No path
+    # print("Low")
+    # print(low_nodes)
+    # print("High")
+    # print(high_nodes)
 
     # for n in ddg.data_graph.nodes(data=True):
     #     if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
@@ -461,17 +440,16 @@ def get_leafs(graph):
     return leaf_nodes
 
 #########IMPLICIT################
-def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, highAddresses)
+def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, highAddresses):
     high_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, highAddresses)
-    for addr in high_addrs:
-        for path in find_explicit(super_dep_graph, lowAddresses, [addr]):
-            yield path
+    for path in find_explicit(super_dep_graph, lowAddresses, high_addrs):
+        yield path
 
 #Find all high context node instruction addresses:
 def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
     addrs = []
     for n in find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
-        addrs.extend(n.ins_addrs)
+        addrs.extend(n.instruction_addrs)
     return addrs
 
 #Test if branch node creates a high context
@@ -531,3 +509,34 @@ def find_branch_pdom(post_dom_tree, node1, node2):
 
     #No postdominance
     return (None, [node1, node2])
+
+####INFORMATION##########
+#cfg_node is type CFGENode and is also used in cdg
+def find_first_reg_occurences_in_cdg_node(super_dep_graph, cfg_node, reg_offset, ins_offset):
+    for ins_addr in reversed(list(cfg_node.instruction_addrs)):
+        if ins_offset and ins_addr > ins_offset:
+            continue
+        n = get_rda_reg_var(super_dep_graph, ins_addr)
+        if n and n.atom.reg_offset == reg_offset:
+            return n
+    return None
+
+def get_rda_reg_var(super_dep_graph, ins_addr):
+    for node in super_dep_graph.graph.nodes:
+        if not node.codeloc.ins_addr == ins_addr:
+            continue 
+        if isinstance(node.atom,angr.knowledge_plugins.key_definitions.atoms.Register) and node.atom:
+            return node
+
+
+def find_first_reg_occurences_from_cdg_node(cdg, super_dep_graph, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
+    occ = find_first_reg_occurences_in_cdg_node(super_dep_graph, cfg_node, reg_offset, ins_offset)
+    if occ:
+        return [occ]
+    if cfg_node.addr == stop_block_addr:
+        return []
+    occs = []
+    for n in cfg_node.predecessors:
+        occ = find_first_reg_occurences_from_cdg_node(cdg, super_dep_graph, n, reg_offset, stop_block_addr, None)
+        occs.extend(occ)
+    return occs
