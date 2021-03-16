@@ -36,12 +36,27 @@ def main():
 
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
-    
-    #util.cfgs(proj, simgr, state)
-    plot_cfg(cfg, fname="cfg_emul", format="pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
+    start_addr = 0x40118f
 
-    nodes = cfg.model.get_all_nodes(addr=0x40118f)
-    util.draw_tree(angr.utils.graph.PostDominators(cfg.graph,nodes[0]).post_dom,fname="postdom.pdf")
+    start_node = util.find_cfg_node(cfg, start_addr)
+    func_addrs = util.get_unique_reachable_function_addresses(cfg, start_node)
+    super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
+    util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])
+
+
+    subject_addrs = [0x4011b5, 0x401184, 0x4011d2]
+
+    util.draw_graph(super_dep_graph.graph, "superRDA.pdf")
+
+    post_dom_tree = cdg.get_post_dominators()
+
+    start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
+    high_addrs = [0x40119b, 0x40119e]
+    
+    for path in util.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
+        print("path")
+        for step in path:
+            print(hex(step.codeloc.ins_addr))
 
     return 0
 

@@ -70,8 +70,6 @@ def main():
 
     start_node = cfg.model.get_all_nodes(addr=0x401149)[0]
     high_addrs = [0x401155, 0x401158]
-
-    high_nodes = util.find_high_nodes(super_dep_graph, post_dom_tree, start_node, high_addrs)
     
     for path in util.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
         print("path")

@@ -471,6 +471,8 @@ def accumulate_nodes(cfg_node, blacklist, resultlist):
 
 #Find all high nodes recursively in cfg starting from given node
 def find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
+    if isinstance(cfg_node, angr.utils.graph.TemporaryNode):
+        return []
     targets = cfg_node.successors
     if len(targets) == 0:
         return []
@@ -484,9 +486,9 @@ def find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
     dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
     if dominator == None: #No post-domintor
         #Find lowest common ancestor of subjects
-        dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[1], subjects[2])
+        dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[0], subjects[1])
     high_nodes = []
-    blacklist = [dominator]
+    blacklist = [cfg_node,dominator]
     for subject in subjects:
         accumulate_nodes(subject, blacklist, high_nodes)
     rec = find_high_nodes(super_dep_graph, post_dom_tree, dominator, highAddresses)

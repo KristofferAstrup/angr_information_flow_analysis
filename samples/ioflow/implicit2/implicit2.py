@@ -21,43 +21,45 @@ def main():
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./implicit2.out', arg0])
     simgr = proj.factory.simgr(state)
-    
+
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
-        fail_fast=True, 
-        starts=[state.addr], 
+        normalize=True, 
+        starts=[simgr.active[0].addr],
         initial_state=state,
+        context_sensitivity_level=5,
         state_add_options=angr.options.refs,
-        context_sensitivity_level = 10
+        resolve_indirect_jumps=True
     )
+
+    plot_cfg(cfg,"cfg_emul",format="pdf")
 
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
-    
     start_addr = 0x401149
-    # puts_proc = "printf"
-    # arg_regs = util.get_sim_proc_reg_args(proj, puts_proc)
-    # subject_addrs = []
-    # for wrap_addr in util.get_sim_proc_function_wrapper_addrs(proj, puts_proc):
-    #     for caller in util.get_function_node(cdg, wrap_addr).predecessors:
-    #         for reg in arg_regs:
-    #             offset, size = proj.arch.registers[reg.reg_name]
-    #             for occ_node in util.find_first_reg_occurences_from_cdg_node(cdg, ddg, caller, offset, start_addr):
-    #                 subject_addrs.append(occ_node[0].location.ins_addr)
 
     start_node = util.find_cfg_node(cfg, start_addr)
     func_addrs = util.get_unique_reachable_function_addresses(cfg, start_node)
     super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
-
     util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])
+
+    subject_addrs = [0x401168, 0x40118a]
+
+    util.draw_graph(super_dep_graph.graph, "superRDA.pdf")
+
     post_dom_tree = cdg.get_post_dominators()
 
-    start_node = cfg.model.get_all_nodes(addr=0x401149)[0]
+    start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
     high_addrs = [0x401155, 0x401158]
+    high_nodes_addr = util.find_high_node_addrs(super_dep_graph, post_dom_tree, start_node, high_addrs)
+    print(util.hexlist(high_nodes_addr))
 
-    high_nodes = util.find_high_nodes(super_dep_graph, post_dom_tree, start_node, high_addrs)
+    for path in util.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
+        print("path")
+        for step in path:
+            print(hex(step.codeloc.ins_addr))
+
+    return 0
     
-    print(high_nodes)
-
 if __name__ == "__main__":
     main()
