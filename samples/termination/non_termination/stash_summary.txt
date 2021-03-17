@@ -1,0 +1,638 @@
+active: 0
+stashed: 0
+pruned: 0
+unsat: 0
+errored: 0
+deadended: 0
+unconstrained: 0
+found: 102
+avoid: 0
+spinning: 1
+===active: 0===
+===stashed: 0===
+===pruned: 0===
+===unsat: 0===
+===errored: 0===
+===deadended: 0===
+===unconstrained: 0===
+===found: 102===
+no: 0
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 1
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 2
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 3
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 4
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 5
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 6
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 7
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 8
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 9
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 10
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 11
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 12
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 13
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 14
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 15
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 16
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 17
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 18
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 19
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 20
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 21
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 22
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 23
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 24
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 25
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 26
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 27
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 28
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 29
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 30
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 31
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 32
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 33
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 34
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 35
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 36
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 37
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 38
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 39
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 40
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 41
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 42
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 43
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 44
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 45
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 46
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 47
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 48
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 49
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 50
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 51
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 52
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 53
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 54
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 55
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 56
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 57
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 58
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 59
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 60
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 61
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 62
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 63
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 64
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 65
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 66
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 67
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 68
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 69
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 70
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 71
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 72
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 73
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 74
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 75
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 76
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 77
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 78
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 79
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 80
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 81
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 82
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 83
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 84
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 85
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 86
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 87
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 88
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 89
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 90
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 91
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 92
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 93
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 94
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 95
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 96
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 97
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 98
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 99
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 100
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+no: 101
+4198767
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
+===avoid: 0===
+===spinning: 1===
+no: 0
+4198749
+dump[0]: b''
+dump[1]: b''
+dump[2]: b''
+-----
