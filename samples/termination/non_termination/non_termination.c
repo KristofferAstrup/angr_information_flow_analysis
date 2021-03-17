@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-    while(argc != 2) {}
+    while(argv[1][0] == 'a') {}
     printf("Hello");
     return 0;
 }

@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-    if(argc != 1) {
+    if(argv[1][0] == 'a') {
         return 0;
     }
     printf("Hello");
