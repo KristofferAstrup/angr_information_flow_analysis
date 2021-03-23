@@ -18,13 +18,9 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
             raise Exception("Could not find branch location")
         simgr = proj.factory.simgr(simgr.found[0])
     simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
-    simgr.explore(find=branch.dominator.addr, num_find=bound+10) #num_find=bound+10; try to take all while detect inf loops
-    util_out.write_stashes(simgr)
-    diff = test_observer_diff_simgr(simgr)
-    if diff:
-        return ProgressLeakProof(branch, diff[0], diff[1])
+    simgr.explore(find=branch.dominator.addr, num_find=bound*10) #num_find=bound+10; try to take all while detect inf loops
 
-    if len(simgr.spinning) > 0 and len(simgr.found) > 0:
+    if "spinning" in simgr.stashes.keys() and len(simgr.spinning) > 0 and len(simgr.found) > 0:
         spinning_state = simgr.spinning[0]
         #We have inf loop - try to find post-dominator progress
         dominator_state = simgr.found[0]
@@ -33,6 +29,10 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
         simgr.explore(find=lambda s: s.posix.dumps(1) != dump, num_find=1)
         if len(simgr.found) > 0:
             return TerminationLeakProof(spinning_state.loop_data.current_loop, branch, spinning_state, simgr.found[0])
+
+    diff = test_observer_diff_simgr(simgr)
+    if diff:
+        return ProgressLeakProof(branch, diff[0], diff[1])
 
     return None
 

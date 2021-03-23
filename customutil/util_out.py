@@ -94,9 +94,9 @@ def get_str_from_arg(state, arg, no=5, newline=True):
     for bs in solutions:
         try:
             decoded_sol = bs.decode('UTF-8')
-            str += ("" if first else "|" + ("\n" if newline else "")) + decoded_sol
+            str += ("" if first else ("\n" if newline else "|")) + decoded_sol
         except:
-            str +=  ("" if first else "|" + ("\n" if newline else "")) + "no utf-8 "
+            str +=  ("" if first else ("\n" if newline else "|")) + "no utf-8 "
         first = False
     return str
 

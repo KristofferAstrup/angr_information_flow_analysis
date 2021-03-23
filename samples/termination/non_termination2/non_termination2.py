@@ -36,19 +36,19 @@ def main():
     start_addr = 0x401149 #main entry block
     start_node = cfg.model.get_any_node(addr=start_addr)
 
-    util_out.draw_everything(proj, simgr, state, start_node)
-    return
     post_dom_tree = cdg.get_post_dominators()
     dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
 
     branches = util_implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
-
+    print("========EXPLORE========")
     simgr.explore(find=0x401149)
     if len(simgr.found) < 1:
         raise("No main entry block state found!")
     state = simgr.found[0]
-
+    print("========DIFF========")
     for branch in branches:
+        print("========BRANCH========")
+        print(branch)
         leak = util_progress.test_observer_diff(proj, cfg, state, branch)
         if leak:
             print(leak)
