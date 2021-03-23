@@ -24,13 +24,63 @@ def main():
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./non_termination.out', arg0])
+    #state.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
     simgr = proj.factory.simgr(state)
     for byte in arg0.chop(8):
-        state.add_constraints(byte >= '\x20') # ' '
+        state.add_constraints(byte >= '\x21') # '!'
         state.add_constraints(byte <= '\x7e') # '~'
 
-    cfg = util_information.cfg_emul(proj, simgr, state)
-    cdg = proj.analyses.CDG(cfg = cfg)
+    # cfg = util_information.cfg_emul(proj, simgr, state)
+    # cdg = proj.analyses.CDG(cfg = cfg)
+
+    # simgr.explore(find=0x401180, num_find=10)
+
+    simgr.explore(find=0x040116d)
+    found = simgr.found[0]
+    simgr.move('active', 'stash')
+    simgr.move('found', 'active')
+    simgr.step()
+    simgr.stash(filter_func = lambda s: s.block().addr != 0x40115d)
+    simgr.explore(find=0x0040116d)
+    step_sim = simgr.successors(simgr.found[0])
+    print(step_sim.unsat_successors)
+    #print(sim_succs.unsat_successors)
+    # for s in simgr.active:
+    #     print(hex(s.addr))
+    #     print(util_out.get_str_from_arg(s, arg0, no=10, newline=False))
+
+    #util_out.write_stashes(simgr, args=[arg0])
+        
+    # print('---')
+    # simgr.explore(find=0x40116d)
+    # found = simgr.found[0]
+    # print(util_out.get_str_from_arg(found, arg0, no=1, newline=False))
+    # print('---')
+    # simgr = proj.factory.simgr(found)
+    # simgr.explore(find=0x40116f, avoid=0x40115d)
+    # found = simgr.found[0]
+    # print(hex(found.addr))
+    # print(found.satisfiable())
+    return 0
+
+
+
+
+    found.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
+    print(found.solver.constraints)
+    
+    found.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
+    vars = found.solver.constraints[len(found.solver.constraints)-1].args
+    print(vars)
+    #for var in vars:
+    #    print(var)
+    # print(dir(found.scratch))
+    # print(found.scratch.irsb)
+    # print(found.scratch.target)
+    # print(dir(found.scratch.target))
+    # for v in found.scratch.target.variables:
+    #     print(list(state.solver.describe_variables(v)))
+    return 0
 
     high_addrs = [0x401155, 0x401158]
     start_addr = 0x401149 #main entry block

@@ -39,25 +39,28 @@ def accumulate_nodes(cfg_node, blacklist, resultlist):
         accumulate_nodes(child, blacklist, resultlist)
 
 #Find all high branches recursively in cfg starting from given node
-def find_high_branches(super_dep_graph, post_dom_tree, cfg_node, highAddresses):
+def find_high_branches(super_dep_graph, post_dom_tree, cfg_node, highAddresses, blacklist=[]):
+    if cfg_node in blacklist:
+        return []
+    blacklist.append(cfg_node)
     if isinstance(cfg_node, angr.utils.graph.TemporaryNode):
         return []
     targets = cfg_node.successors
     if len(targets) == 0:
         return []
     if len(targets) == 1:
-        return find_high_branches(super_dep_graph, post_dom_tree, targets[0], highAddresses)
+        return find_high_branches(super_dep_graph, post_dom_tree, targets[0], highAddresses, blacklist)
     high = test_high_branch_context(super_dep_graph, cfg_node, highAddresses)
     if not high:
-        leftHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[0], highAddresses)
-        rightHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[1], highAddresses)
+        leftHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[0], highAddresses, blacklist)
+        rightHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[1], highAddresses, blacklist)
         return leftHighs + rightHighs
     dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
     if dominator == None: #No post-domintor
         #Find lowest common ancestor of subjects
         dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[0], subjects[1])
     branch = ImplicitBranch(cfg_node, subjects, dominator)
-    rec = find_high_branches(super_dep_graph, post_dom_tree, dominator, highAddresses)
+    rec = find_high_branches(super_dep_graph, post_dom_tree, dominator, highAddresses, blacklist)
     return [branch] + rec
 
 #Find all high nodes recursively in cfg starting from given node
