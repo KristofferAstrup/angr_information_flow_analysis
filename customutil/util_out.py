@@ -57,14 +57,17 @@ def draw_everything(proj, simgr, state, start_node=None):
         draw_graph(dep_graph.graph, fname="super_dep_graph.pdf")
         print("Plotted to super_dep_graph.pdf")
 
-def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[]):
+def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):
     file = open(filename,"w+") 
-    print('--stashes--')
+    if verbose:
+        print('--stashes--')
     for key in simgr.stashes:
         string = str(key) + ": " + str(len(simgr.stashes[key]))
-        print(string)
+        if verbose:
+            print(string)
         writeline(file, string)
-    print('writing...')
+    if verbose:
+        print('writing...')
     for key in simgr.stashes:
         writeline(file, "===" + str(key) + ": " + str(len(simgr.stashes[key])) + "===")
         for c in range(len(simgr.stashes[key])):
@@ -75,7 +78,9 @@ def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stas
                 try:
                     writeline(file, "dump["+str(d)+"]: " + str(stash.posix.dumps(d)))
                 except Exception as e:
-                    print("dump["+str(d)+"]: eval failure")
+                    if verbose:
+                        print("dump["+str(d)+"]: eval failure")
+                    pass
             for i in range(len(args)):
                 writeline(file, "arg" + str(i) + " " + get_str_from_arg(stash, args[i]))
                 if(key in input_write_stashes):
@@ -84,7 +89,8 @@ def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stas
                     inputfile.write(sol)
                     inputfile.close()
             writeline(file, "-----")
-    print('written to ' + filename)
+    if verbose:
+        print('written to ' + filename)
     file.close()
 
 def get_str_from_arg(state, arg, no=5, newline=True):

@@ -1,38 +1,36 @@
 import angr
-import time
 import monkeyhex
 import inspect
 import re
-import claripy
+import time
 from angr import KnowledgeBase
 from angr.sim_variable import SimRegisterVariable, SimConstantVariable
 from angr.code_location import CodeLocation
 from angr.analyses.ddg import ProgramVariable
 from angr.knowledge_plugins.functions.function_manager import FunctionManager
+from angrutils import *
 import networkx as nx
 import angr.analyses.reaching_definitions.dep_graph as dep_graph
+import matplotlib.pyplot as plt
+import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination
 
 def main():
-    proj = angr.Project('non_termination.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('non_termination1.5.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./non_termination.out', arg0], add_options={angr.options.UNICORN})
-    hier = angr.state_hierarchy.StateHierarchy()
-    simgr = proj.factory.simgr(state, hierarchy=hier)
+    state = proj.factory.entry_state(args=['./non_termination1.5.out', arg0])
+    simgr = proj.factory.simgr(state)
     for byte in arg0.chop(8):
-        state.add_constraints(byte >= '\x21') # '!'
+        state.add_constraints(byte >= '\x20') # ' '
         state.add_constraints(byte <= '\x7e') # '~'
 
     cfg = util_information.cfg_emul(proj, simgr, state)
     cdg = proj.analyses.CDG(cfg = cfg)
-
-    print(util_out.hexlist(list(util_information.find_cfg_node(cfg, 0x401149).instruction_addrs)))
-    print(util_out.hexlist(list(util_information.find_cfg_node(cfg, 0x40115d).instruction_addrs)))
 
     high_addrs = [0x401155, 0x401158]
     start_addr = 0x401149 #main entry block
@@ -59,7 +57,6 @@ def main():
 
     proofs = util_termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
     print(proofs)
-    return
 
 if __name__ == "__main__":
     main()

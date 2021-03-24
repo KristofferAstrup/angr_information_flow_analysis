@@ -55,16 +55,4 @@ class ProgressLeakProof:
         self.state2 = state2
     
     def __repr__(self):
-        return "<Branch: " + str(hex(self.branch.branch.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
-
-class TerminationLeakProof:
-    #Loops: technically, you could reach an infinite nested loop - loops contains all nested loop information (both infinite and finite)
-    #TODO: Make better loop repr with hexed addrs
-    def __init__(self, loops, branch, loopstate, proofstate):
-        self.loops = loops,
-        self.branch = branch
-        self.loopstate = loopstate
-        self.proofstate = proofstate
-    
-    def __repr__(self):
-        return "<Loop: " + str(self.loops) + ", loopstate : " + str(self.loopstate) + ", proofstate: " + str(self.proofstate) + ">"
+        return "<ProgressLeakProof @ branch: " + str(hex(self.branch.branch.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"

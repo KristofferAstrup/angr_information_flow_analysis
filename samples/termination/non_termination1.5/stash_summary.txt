@@ -1,0 +1,142 @@
+active: 0
+stashed: 0
+pruned: 0
+unsat: 0
+errored: 0
+deadended: 8
+unconstrained: 0
+found: 0
+avoid: 0
+stash: 0
+spinning: 4
+===active: 0===
+===stashed: 0===
+===pruned: 0===
+===unsat: 0===
+===errored: 0===
+===deadended: 8===
+no: 0
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0                
+@      @@      
+ @@  @ @@@     
+@@@    @ @ @@ @
+-----
+no: 1
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 C    @@        
+C @@  @@  @   @
+C @@ @@  @  @@@
+C        @    @
+-----
+no: 2
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 @D   @@       @
+@D  @@@ @ @@   
+@D     @@      
+ D             
+-----
+no: 3
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0    F@@ @    @ @
+   F           
+   F  @        
+   F  @       $
+-----
+no: 4
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 CD  @@ @@@@@  @
+CD@@   @ @ @@ @
+CD @  @@@      
+CD             
+-----
+no: 5
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 C@@F    @   @@ 
+C  F           
+C  F          !
+C  F          %
+-----
+no: 6
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 @D@F     @    @
+ D F           
+ D F          !
+ D F          %
+-----
+no: 7
+0x601068
+dump[0]: b''
+dump[1]: b'Start\nEnd\n'
+dump[2]: b''
+arg0 CD F @   @    @
+CD F           
+CD F          !
+CD F          %
+-----
+===unconstrained: 0===
+===found: 0===
+===avoid: 0===
+===stash: 0===
+===spinning: 4===
+no: 0
+0x40117f
+dump[0]: b''
+dump[1]: b'Start\n'
+dump[2]: b''
+arg0 @ E   @ @@   @@
+  E            
+  E           !
+  E           %
+-----
+no: 1
+0x40117f
+dump[0]: b''
+dump[1]: b'Start\n'
+dump[2]: b''
+arg0 C E @  @@    @ 
+C E   @        
+C E            
+C E           $
+-----
+no: 2
+0x40117f
+dump[0]: b''
+dump[1]: b'Start\n'
+dump[2]: b''
+arg0 @DE  @@  @  @@@
+ DE   @        
+ DE            
+ DE           $
+-----
+no: 3
+0x40117f
+dump[0]: b''
+dump[1]: b'Start\n'
+dump[2]: b''
+arg0 CDE@  @  @  @@ 
+CDE            
+CDE           !
+CDE           %
+-----
