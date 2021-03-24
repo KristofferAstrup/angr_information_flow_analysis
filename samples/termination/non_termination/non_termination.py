@@ -1,18 +1,16 @@
 import angr
+import time
 import monkeyhex
 import inspect
 import re
+import claripy
 from angr import KnowledgeBase
 from angr.sim_variable import SimRegisterVariable, SimConstantVariable
 from angr.code_location import CodeLocation
 from angr.analyses.ddg import ProgramVariable
 from angr.knowledge_plugins.functions.function_manager import FunctionManager
-from angrutils import *
 import networkx as nx
 import angr.analyses.reaching_definitions.dep_graph as dep_graph
-from networkx_query import search_nodes, search_edges
-import matplotlib.pyplot as plt
-import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
@@ -23,85 +21,85 @@ def main():
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./non_termination.out', arg0])
-    #state.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
-    simgr = proj.factory.simgr(state)
+    state = proj.factory.entry_state(args=['./non_termination.out', arg0], add_options={angr.options.UNICORN})
+    hier = angr.state_hierarchy.StateHierarchy()
+    simgr = proj.factory.simgr(state, hierarchy=hier)
     for byte in arg0.chop(8):
         state.add_constraints(byte >= '\x21') # '!'
         state.add_constraints(byte <= '\x7e') # '~'
 
-    # cfg = util_information.cfg_emul(proj, simgr, state)
-    # cdg = proj.analyses.CDG(cfg = cfg)
+    t0 = time.process_time()
 
-    # simgr.explore(find=0x401180, num_find=10)
+    cfg = util_information.cfg_emul(proj, simgr, state)
+    
+    start_addr = 0x401149
+    loop_seer = angr.exploration_techniques.LoopSeer(cfg=cfg, bound=1000)
+    simgr.use_technique(loop_seer)
+    simgr.explore(find=start_addr)
+    simgr.stash(from_stash='active', to_stash='stash')
+    simgr.stash(from_stash='found', to_stash='active')
 
-    simgr.explore(find=0x040116d)
-    found = simgr.found[0]
-    simgr.move('active', 'stash')
-    simgr.move('found', 'active')
-    simgr.step()
-    simgr.stash(filter_func = lambda s: s.block().addr != 0x40115d)
-    simgr.explore(find=0x0040116d)
-    step_sim = simgr.successors(simgr.found[0])
-    print(step_sim.unsat_successors)
-    #print(sim_succs.unsat_successors)
-    # for s in simgr.active:
-    #     print(hex(s.addr))
-    #     print(util_out.get_str_from_arg(s, arg0, no=10, newline=False))
+    simgr.explore()
+    
+    t1 = time.process_time()
+    print("Delta: " + str(t1-t0))
 
     #util_out.write_stashes(simgr, args=[arg0])
-        
-    # print('---')
-    # simgr.explore(find=0x40116d)
-    # found = simgr.found[0]
-    # print(util_out.get_str_from_arg(found, arg0, no=1, newline=False))
-    # print('---')
-    # simgr = proj.factory.simgr(found)
-    # simgr.explore(find=0x40116f, avoid=0x40115d)
-    # found = simgr.found[0]
-    # print(hex(found.addr))
-    # print(found.satisfiable())
-    return 0
-
-
-
-
-    found.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
-    print(found.solver.constraints)
     
-    found.options |= {angr.sim_options.CONSTRAINT_TRACKING_IN_SOLVER}
-    vars = found.solver.constraints[len(found.solver.constraints)-1].args
-    print(vars)
-    #for var in vars:
-    #    print(var)
-    # print(dir(found.scratch))
-    # print(found.scratch.irsb)
-    # print(found.scratch.target)
-    # print(dir(found.scratch.target))
-    # for v in found.scratch.target.variables:
-    #     print(list(state.solver.describe_variables(v)))
-    return 0
 
-    high_addrs = [0x401155, 0x401158]
-    start_addr = 0x401149 #main entry block
-    start_node = cfg.model.get_any_node(addr=start_addr)
 
-    post_dom_tree = cdg.get_post_dominators()
-    dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    # data = []
+    # simgr.active[0].history.subscribe_actions()
+    # simgr.active[0].inspect.b('instruction', when=angr.BP_BEFORE, instruction=0x0040115d, action= test )#data.append(s.copy()))
 
-    branches = util_implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
+    # simgr.explore()
 
-    simgr.explore(find=0x401149)
-    if len(simgr.found) < 1:
-        raise("No main entry block state found!")
-    state = simgr.found[0]
+    # #ref = hier.get_ref(simgr.spinning[0].history)
+    # print(list(simgr.spinning[0].history.lineage))
+    # for h in simgr.spinning[0].history.lineage:
+    #     for ac in h.actions:
+    #         try:
+    #             print(ac)
+    #         except:
+    #             pass
+    #     break
 
-    for branch in branches:
-        leak = util_progress.test_observer_diff(proj, cfg, state, branch)
-        if leak:
-            print(leak)
+    # for s in data:
+    #     print(s.history.block_count)
+
+
+    # print(simgr.spinning[0].solver.constraints)
+    # print(list(simgr.spinning[0].history.ins_addrs))
 
     return
+
+# class LoopCompare(angr.state_plugins.SimStatePlugin):
+#     def __init__(self):
+#          self.arr = []
+
+#     def set_state(state):
+#         self.arr = state.arr
+
+def test(s):
+    pass
+    # for ac in s.history.actions:
+    #     print(dir(ac))
+    # if not hasattr(s, 'boi'):
+    #     s.boi = 0
+    # else:
+    #     s.boi = s.boi + 1
+    # print(s.boi)
+
+    # start_node = util_information.find_cfg_node(cfg, 0x401149)
+    # func_addrs = util_explicit.get_unique_reachable_function_addresses(cfg, start_node)
+    # funcs = util_information.find_func_from_addrs(proj, func_addrs)
+    
+    
+    # loop_res = proj.analyses.LoopFinder(functions=funcs)
+    # loop = loop_res.loops[0]
+    # t = angr.analyses.forward_analysis.LoopVisitor(loop)
+    # print(type(t))
+    # print(dir(t))
 
 if __name__ == "__main__":
     main()

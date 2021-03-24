@@ -70,7 +70,7 @@ def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stas
         for c in range(len(simgr.stashes[key])):
             stash = simgr.stashes[key][c]
             writeline(file, "no: " + str(c))
-            writeline(file, str(stash.addr))
+            writeline(file, str(hex(stash.addr)))
             for d in range(3):
                 try:
                     writeline(file, "dump["+str(d)+"]: " + str(stash.posix.dumps(d)))
