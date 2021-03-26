@@ -12,10 +12,14 @@ def get_termination_leak(super_dep_graph, cfg, high_addrs, spinning_state, progr
     high_context_loop = util_implicit.test_high_loop_context(super_dep_graph, cfg, infinite_loop, high_addrs)
     if not high_context_loop:
         None
+    loop_block_addrs = list(map(lambda n: n.addr, infinite_loop.body_nodes))
     proofs = []
     for progress_state in progress_states:
-        his = spinning_state.history.closest_common_ancestor(progress_state.history)
-        print(list(his.lineage))
+        his = get_closest_common_ancestor(spinning_state.history, progress_state.history) #spinning_state.history.closest_common_ancestor(progress_state.history)
+        if his == None:
+            continue
+        while his.parent.addr in loop_block_addrs: #Step out/parent to the loop entry block in case branch happens after entry
+            his = his.parent
         if his != infinite_loop_history_begin:
             continue
         if progress_state.posix.dumps(1).startswith(spinning_state.posix.dumps(1)):
@@ -57,6 +61,16 @@ def get_infinite_loop_begin_of_spinning(spinning, min_iters=1):
     if iters > min_iters and infinite_loop_history_begin:
         return (infinite_loop_history_begin, infinite_loop)
     return None
+
+def get_closest_common_ancestor(his1, his2):
+    his1 = list(his1.parents)
+    his2 = list(his2.parents)
+    i = 0
+    while(his1[i] == his2[i]):
+        i = i+1
+        if i >= len(his1) or i >= len(his2):
+            return None
+    return his1[i]
 
 class TerminationLeakProof:
     #TODO: Make better loop repr with hexed addrs within loops

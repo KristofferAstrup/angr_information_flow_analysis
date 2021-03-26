@@ -47,11 +47,9 @@ def main():
     state = simgr.found[0]
 
     for branch in branches:
-        leak = util_progress.test_observer_diff(proj, state, branch)
+        leak = util_progress.test_observer_diff(proj, cfg, state, branch)
         if leak:
             print(leak)
-            print("state1 arg0: " + util_out.get_str_from_arg(leak.state1, arg0, no=1, newline=False))
-            print("state2 arg0: " + util_out.get_str_from_arg(leak.state2, arg0, no=1, newline=False))
 
     return
 
