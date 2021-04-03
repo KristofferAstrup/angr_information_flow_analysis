@@ -1,0 +1,5 @@
+#Explicit (static)
+#Implicit (static)
+#Termination (concolic)
+#Progress (concolic)
+#Timing (concolic)

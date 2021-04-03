@@ -22,7 +22,6 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
     diff = test_observer_diff_simgr(simgr)
     if diff:
         return ProgressLeakProof(branch, diff[0], diff[1])
-
     return None
 
 def test_observer_diff_simgr(simgr):
