@@ -28,7 +28,7 @@ def test_timing_leak(proj, cfg, state, branch):
 
     state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
     simgr.explore(find=branch.dominator.addr, num_find=100000) #High number to ensure we capture all paths
-    post_progress_states = filter(lambda s: has_post_progress(proj, s), simgr.found)
+    post_progress_states = list(filter(lambda s: has_post_progress(proj, s), simgr.found))
     
     res = get_procedure_diff_acc(post_progress_states, "sleep")
     if res:
