@@ -199,6 +199,13 @@ def find_cfg_node(cfg, block_addr):
             return n
     return None
 
+def find_func_from_addrs(proj, addrs):
+    for addr in addrs:
+        yield proj.kb.functions.get_by_addr(addr)
+
+def find_func_from_addr(proj, addr):
+    return proj.kb.functions.get_by_addr(addr)
+
 def find_first_reg_occurences_in_cdg_node(super_dep_graph, cfg_node, reg_offset, ins_offset):
     for ins_addr in reversed(list(cfg_node.instruction_addrs)):
         if ins_offset and ins_addr > ins_offset:

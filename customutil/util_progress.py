@@ -19,17 +19,6 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
         simgr = proj.factory.simgr(simgr.found[0])
     simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
     simgr.explore(find=branch.dominator.addr, num_find=bound*10) #num_find=bound+10; try to take all while detect inf loops
-
-    if "spinning" in simgr.stashes.keys() and len(simgr.spinning) > 0 and len(simgr.found) > 0:
-        spinning_state = simgr.spinning[0]
-        #We have inf loop - try to find post-dominator progress
-        dominator_state = simgr.found[0]
-        dump = dominator_state.posix.dumps(1)
-        simgr = proj.factory.simgr(dominator_state)
-        simgr.explore(find=lambda s: s.posix.dumps(1) != dump, num_find=1)
-        if len(simgr.found) > 0:
-            return TerminationLeakProof(spinning_state.loop_data.current_loop, branch, spinning_state, simgr.found[0])
-
     diff = test_observer_diff_simgr(simgr)
     if diff:
         return ProgressLeakProof(branch, diff[0], diff[1])
@@ -55,16 +44,4 @@ class ProgressLeakProof:
         self.state2 = state2
     
     def __repr__(self):
-        return "<Branch: " + str(hex(self.branch.branch.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
-
-class TerminationLeakProof:
-    #Loops: technically, you could reach an infinite nested loop - loops contains all nested loop information (both infinite and finite)
-    #TODO: Make better loop repr with hexed addrs
-    def __init__(self, loops, branch, loopstate, proofstate):
-        self.loops = loops,
-        self.branch = branch
-        self.loopstate = loopstate
-        self.proofstate = proofstate
-    
-    def __repr__(self):
-        return "<Loop: " + str(self.loops) + ", loopstate : " + str(self.loopstate) + ", proofstate: " + str(self.proofstate) + ">"
+        return "<ProgressLeakProof @ branch: " + str(hex(self.branch.branch.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
