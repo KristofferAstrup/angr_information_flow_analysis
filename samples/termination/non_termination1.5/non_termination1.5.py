@@ -19,7 +19,7 @@ sys.path.append('../../../')
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination
 
 def main():
-    proj = angr.Project('C:/Users/kristoffer/angrenv/angr_proj_dev/samples/termination/non_termination1.5/non_termination1.5.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./non_termination1.5.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
