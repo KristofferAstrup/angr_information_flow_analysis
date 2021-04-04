@@ -19,7 +19,7 @@ sys.path.append('../../../')
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_timing
 
 def main():
-    proj = angr.Project('./simple_diff.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('/samples/timing/simple_diff/simple_diff.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)

@@ -22,11 +22,8 @@ def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
 #Test if branch node creates a high context
 def test_high_branch_context(super_dep_graph, cfg_node, high_addrs):
     branch_ins = cfg_node.instruction_addrs[len(cfg_node.instruction_addrs)-1]
-    highContext = False #Default low context (not proven high)
-    for path in list(util_explicit.find_explicit(super_dep_graph, [branch_ins], high_addrs)):
-        highContext = True #High context
-        break
-    return highContext 
+    explicit_paths = list(util_explicit.find_explicit(super_dep_graph, [branch_ins], high_addrs))
+    return len(explicit_paths) > 0 
 
 def test_high_loop_context(super_dep_graph, cfg, loop, high_addrs):
     loop_block_addrs = map(lambda n: n.addr, loop.body_nodes)

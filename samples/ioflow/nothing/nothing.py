@@ -49,9 +49,9 @@ def main():
     print(util.hexlist(subject_addrs))
     
     print('Explicits:')
-    for path in util.find_explicit(proj, ddg, subject_addrs, highAddresses):
+    for explicit_path in util.find_explicit(proj, ddg, subject_addrs, highAddresses):
         print("Explicit flow:")
-        print(path)
+        print(explicit_path)
 
     print('Implicits:')
     main_node = util.find_cdg_node(cdg, mainAddress)

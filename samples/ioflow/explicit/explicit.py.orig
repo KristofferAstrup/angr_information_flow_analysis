@@ -38,12 +38,17 @@ def main():
 
     start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
     
+<<<<<<< HEAD
     rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+
+    for path in util_explicit.find_explicit(rda, low_addrs, high_addrs):
+        print(path)
+=======
     for explicit_path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
         print(explicit_path.print_path())
         for n in explicit_path.path:
-
-    for path in util_explicit.find_explicit(rda, low_addrs, high_addrs):
+           print(hex(n.location.ins_addr))
+>>>>>>> 02f2e8cb83a4435c60a00f836ad536fc14e46c37
 
     util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node, high_addrs=high_addrs, subject_addrs=low_addrs)
     return

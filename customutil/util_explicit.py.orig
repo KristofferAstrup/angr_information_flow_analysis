@@ -72,7 +72,11 @@ def find_explicit(rda, lowAddresses, highAddresses):
     for high_node in high_nodes:
         for low_node in low_nodes:
             try:
+<<<<<<< HEAD
+                yield nx.dijkstra_path(rda.graph, high_node, low_node)
+=======
                 yield ExplicitLeakPath(high_node, low_node, nx.dijkstra_path(super_dep_graph.graph, high_node, low_node))
+>>>>>>> 02f2e8cb83a4435c60a00f836ad536fc14e46c37
             except:
                 pass #No path
     # print("Low")

@@ -16,10 +16,10 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination
+from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_analysis
 
 def main():
-    proj = angr.Project('./non_termination1.5.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('non_termination1.5.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
@@ -34,11 +34,6 @@ def main():
 
     high_addrs = [0x401155, 0x401158]
     start_addr = 0x401149 #main entry block
-    start_node = cfg.model.get_any_node(addr=start_addr)
-
-    super_dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-
-    t0 = time.process_time()
 
     loop_seer = angr.exploration_techniques.LoopSeer(cfg=cfg, bound=10)
     simgr.use_technique(loop_seer)
@@ -50,13 +45,13 @@ def main():
     simgr.stash(from_stash='found', to_stash='active')
     simgr.explore()
 
-    t1 = time.process_time()
     print("Delta: " + str(t1-t0))
 
     util_out.write_stashes(simgr, args=[arg0], verbose=False)
-
-    proofs = util_termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
-    print(proofs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs)
+    proofs = ifa.find_termination_leaks(simgr.spinning[0],simgr.deadended)
+    #proofs = util_termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
+    #print(proofs)
 
 if __name__ == "__main__":
     main()

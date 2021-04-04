@@ -54,9 +54,9 @@ def main():
     
     util.draw_graph(super_dep_graph.graph, fname="super_rda.pdf")
 
-    for path in util.find_explicit(super_dep_graph, subject_addrs, high_addrs):
+    for explicit_path in util.find_explicit(super_dep_graph, subject_addrs, high_addrs):
         print('----Path-----')
-        for step in path:
+        for step in explicit_path.path:
             print(hex(step.codeloc.ins_addr))
 
     return 0
