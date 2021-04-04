@@ -30,7 +30,7 @@ class InformationFlowAnalysis:
     def find_explicit_flows(self):
         if not self.subject_addrs:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
-        for explicit_path in util_explicit.find_explicit(self.project, self.ddg, self.subject_addrs, self.high_addrs):
+        for explicit_path in util_explicit.find_explicit(self.rda, self.subject_addrs, self.high_addrs):
             print("Explicit flow:")
             print(explicit_path)
             yield explicit_path
