@@ -14,7 +14,7 @@ sys.path.append('../../../')
 from customutil import util_information, util_explicit, util_implicit, util_out
 
 def main():
-    proj = angr.Project('samples/ioflow/explicit/explicit.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
     state = proj.factory.entry_state()
     simgr = proj.factory.simgr(state)
 
@@ -39,13 +39,12 @@ def main():
     start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
     
     rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-    for explicit_path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
-        print(explicit_path.print_path())
-        for n in explicit_path.path:
 
-    for path in util_explicit.find_explicit(rda, low_addrs, high_addrs):
+    explicit_paths = list(util_explicit.find_explicit(rda, low_addrs, high_addrs))
+    for path in explicit_paths:
+        print(path.print_path())
 
-    util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node, high_addrs=high_addrs, subject_addrs=low_addrs)
+    #util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node, high_addrs=high_addrs, subject_addrs=low_addrs)
     return
 
 if __name__ == "__main__":

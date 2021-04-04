@@ -15,7 +15,7 @@ def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_a
 #Find all high context node instruction addresses:
 def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
     addrs = []
-    for n in find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
+    for n in find_high_branch_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
         addrs.extend(n.instruction_addrs)
     return addrs
 
@@ -34,7 +34,7 @@ def test_high_loop_context(super_dep_graph, cfg, loop, high_addrs):
     return False
     
 #Pure side-effect; resultlist accumulates the nodes
-#TODO: This should not take a blacklist with the initial node (see find_high_nodes)
+#TODO: This should not take a blacklist with the initial node (see find_high_branch_nodes)
 def accumulate_nodes(cfg_node, blacklist, resultlist):
     blacklist.append(cfg_node)
     resultlist.append(cfg_node)
@@ -69,7 +69,7 @@ def find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs, bla
     return [branch] + rec
 
 #Find all high nodes recursively in cfg starting from given node
-def find_high_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
+def find_high_branch_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
     acc_high_nodes = []
     for branch in find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
         high_nodes = []

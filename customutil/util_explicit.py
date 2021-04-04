@@ -45,7 +45,6 @@ def get_super_dep_graph(proj, function_addrs):
     cfg = proj.analyses.CFGFast() #adds info to kb
     rda_dep_graph = dep_graph.DepGraph()
     for func_addr in function_addrs:
-        #print(hex(func_addr))
         func = proj.kb.functions.function(addr=func_addr)
         if func == None:
             print('Warning: ' + str(hex(func_addr)) + ' did not map to any function through kb!')
@@ -72,38 +71,11 @@ def find_explicit(rda, lowAddresses, highAddresses):
     for high_node in high_nodes:
         for low_node in low_nodes:
             try:
-                yield ExplicitLeakPath(high_node, low_node, nx.dijkstra_path(super_dep_graph.graph, high_node, low_node))
+                path = nx.dijkstra_path(rda.graph, high_node, low_node)
+                yield ExplicitLeakPath(high_node, low_node, path)
             except:
                 pass #No path
-    # print("Low")
-    # print(low_nodes)
-    # print("High")
-    # print(high_nodes)
 
-    # for n in ddg.data_graph.nodes(data=True):
-    #     if n[0].location.ins_addr in lowAddresses and not isinstance(n[0].variable, SimConstantVariable):
-    #         if(n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist):
-    #             continue
-    #         targetNodes.append(n[0])
-
-    # for n in ddg.data_graph.nodes(data=True):
-    #     if n[0].location.ins_addr in highAddresses and not isinstance(n[0].variable, SimConstantVariable):
-    #         if n[0].variable and isinstance(n[0].variable, SimRegisterVariable) and n[0].variable.reg in regBlacklist:
-    #             continue
-    #         sub = ddg.data_sub_graph(n[0], simplified=False)
-    #         for targetNode in targetNodes:
-    #             try:
-    #                 yield nx.dijkstra_path(sub,n[0],targetNode)
-    #             except:
-    #                 pass #No path
-
-#Augment super graph with edges: 
-#Foreach external(argument-input) try to find a source/caller(argument-output)
-#   Find the block of the external node in the CDG (or call-graph)
-#   Foreach block caller:
-#       If the caller block has a end-node node in it's rsa that corresponds to the external node:
-#           Add edge from this node to the external node
-#       If not, recursively repeat with the caller blocks callers
 def link_externals_to_earliest_definition(super_dep_graph, cdg, cdg_end_nodes):
     leafs = get_leafs(super_dep_graph.graph)
     externals = get_externals(super_dep_graph)
@@ -113,12 +85,7 @@ def link_externals_to_earliest_definition(super_dep_graph, cdg, cdg_end_nodes):
             if not cdg_node:
                 continue
             matches = find_earliest_matching_definition(external, nn, leafs, cdg_end_nodes, cdg_node)
-            # print('------------')
-            # print(external)
-            # print(nn)
-            # print('----')
             for match in matches:
-                # print(match)
                 super_dep_graph.graph.add_edge(match, nn)
 
 #external is the target external node from which the target is child
