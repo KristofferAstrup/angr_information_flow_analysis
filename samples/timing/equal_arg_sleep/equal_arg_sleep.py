@@ -17,13 +17,13 @@ sys.path.append('../../../')
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_timing
 
 def main():
-    proj = angr.Project('./equal_sleep.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./equal_arg_sleep.out', load_options={'auto_load_libs':False})
 
     arg_regs = list(util_information.get_arg_regs(proj))
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./equal_sleep.out', arg0], add_options={angr.options.UNICORN})
+    state = proj.factory.entry_state(args=['./equal_arg_sleep.out', arg0], add_options={angr.options.UNICORN})
     hier = angr.state_hierarchy.StateHierarchy()
     simgr = proj.factory.simgr(state, hierarchy=hier)
     for byte in arg0.chop(8):

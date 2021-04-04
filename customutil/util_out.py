@@ -4,6 +4,7 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
+import random
 from customutil import util_explicit
 from networkx.drawing.nx_pydot import graphviz_layout
 
@@ -53,9 +54,17 @@ def draw_everything(proj, simgr, state, start_node=None):
 
     if start_node:
         print("--SUPER_DEP_GRAPH--")
-        dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-        draw_graph(dep_graph.graph, fname="super_dep_graph.pdf")
+        draw_super_dep_graph(proj, cfg, cdg, start_node)
         print("Plotted to super_dep_graph.pdf")
+
+def draw_super_dep_graph(proj, cfg, cdg, start_node, fname="super_dep_graph.pdf"):
+    dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    fig = plt.figure(figsize=(100,100))
+    # for n in dep_graph.graph.nodes:
+    #     print(n)
+    colors = [random.random() for node in dep_graph.graph.nodes()]
+    nx.draw(dep_graph.graph, cmap=plt.get_cmap('viridis'), node_color=colors, with_labels=True)
+    fig.savefig(fname, dpi=5)
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):
     file = open(filename,"w+") 

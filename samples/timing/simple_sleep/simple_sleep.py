@@ -17,7 +17,7 @@ sys.path.append('../../../')
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_timing
 
 def main():
-    proj = angr.Project('C:/Users/kristoffer/angrenv/angr_proj_dev/samples/timing/simple_sleep/simple_sleep.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./simple_sleep.out', load_options={'auto_load_libs':False})
 
     arg_regs = list(util_information.get_arg_regs(proj))
 
