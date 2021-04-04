@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 import random
-from customutil import util_explicit
+from customutil import util_explicit, util_rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def cfgs(proj, simgr, state):
@@ -57,13 +57,15 @@ def draw_everything(proj, simgr, state, start_node=None):
         draw_super_dep_graph(proj, cfg, cdg, start_node)
         print("Plotted to super_dep_graph.pdf")
 
-def draw_super_dep_graph(proj, cfg, cdg, start_node, fname="super_dep_graph.pdf"):
-    dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+def draw_super_dep_graph(proj, cfg, cdg, start_node, fname="super_dep_graph.pdf", high_addrs=None, subject_addrs=None):
+    rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    rda_graph = util_rda.wrap_rda(rda)
+    if high_addrs and subject_addrs:
+        util_explicit.enrich_rda_explicit(rda_graph, high_addrs, subject_addrs)
     fig = plt.figure(figsize=(100,100))
-    # for n in dep_graph.graph.nodes:
-    #     print(n)
-    colors = [random.random() for node in dep_graph.graph.nodes()]
-    nx.draw(dep_graph.graph, cmap=plt.get_cmap('viridis'), node_color=colors, with_labels=True)
+    color_map = {0: 0.5, 1: 0.25, 2: 0}
+    colors = [color_map[node.sec_class] for node in rda_graph.nodes()]
+    nx.draw(rda_graph, cmap=plt.cm.Set1, node_color=colors, with_labels=True, node_size=1500)
     fig.savefig(fname, dpi=5)
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):

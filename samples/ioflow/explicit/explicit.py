@@ -11,10 +11,10 @@ import networkx as nx
 from networkx_query import search_nodes, search_edges
 import sys
 sys.path.append('../../../')
-from customutil import util
+from customutil import util_information, util_explicit, util_implicit, util_out
 
 def main():
-    proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('samples/ioflow/explicit/explicit.out', load_options={'auto_load_libs':False})
     state = proj.factory.entry_state()
     simgr = proj.factory.simgr(state)
 
@@ -32,15 +32,19 @@ def main():
 
     print('--------')
 
-    lowAddresses = {0x401172}
-    highAddresses = {0x401158, 0x401155}
-    
-    for path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
-        print(path)
-        for n in path:
-           print(hex(n.location.ins_addr))
+    low_addrs = {0x401172}
+    high_addrs = {0x401158, 0x401155}
+    start_addr = 0x401149
 
-    return 0
+    start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
+    
+    rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+
+    for path in util_explicit.find_explicit(rda, low_addrs, high_addrs):
+        print(path)
+
+    util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node, high_addrs=high_addrs, subject_addrs=low_addrs)
+    return
 
 if __name__ == "__main__":
     main()

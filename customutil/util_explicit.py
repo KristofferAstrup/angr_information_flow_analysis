@@ -7,6 +7,22 @@ import pydot
 from customutil import util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
+def enrich_rda_explicit(rda_graph, high_addrs, subject_addrs):
+    subject_nodes = list(find_rda_graph_nodes(rda_graph, subject_addrs))
+    for subject_node in subject_nodes:
+        subject_node.given_sec_class = 1
+        subject_node.sec_class = 1
+        descendants = networkx.descendants(rda_graph, subject_node)
+        for des in descendants:
+            des.sec_class = 1
+    high_nodes = list(find_rda_graph_nodes(rda_graph, high_addrs))
+    for high_node in high_nodes:
+        high_node.given_sec_class = 2
+        high_node.sec_class = 2
+        descendants = networkx.descendants(rda_graph, high_node)
+        for des in descendants:
+            des.sec_class = 2
+
 #Capture all relevant functions (main and all post main in cdg)
 #inclusive
 def get_unique_reachable_function_addresses(cfg, start_node):
@@ -43,20 +59,20 @@ def get_super_dep_graph(proj, function_addrs):
         rda_dep_graph = rda.dep_graph
     return rda_dep_graph
 
-def find_dep_graph_nodes(super_dep_graph, ins_addrs):
+def find_rda_graph_nodes(rda_graph, ins_addrs):
     for ins_addr in ins_addrs:
-        for n in super_dep_graph.graph.nodes():
+        for n in rda_graph.nodes():
             if n.codeloc and n.codeloc.ins_addr == ins_addr:
-                yield n
+                yield n      
        
 #find possible paths using the super rda dependence graph
-def find_explicit(super_dep_graph, lowAddresses, highAddresses):
-    low_nodes = list(find_dep_graph_nodes(super_dep_graph, lowAddresses))
-    high_nodes = list(find_dep_graph_nodes(super_dep_graph, highAddresses))
+def find_explicit(rda, lowAddresses, highAddresses):
+    low_nodes = list(find_rda_graph_nodes(rda.graph, lowAddresses))
+    high_nodes = list(find_rda_graph_nodes(rda.graph, highAddresses))
     for high_node in high_nodes:
         for low_node in low_nodes:
             try:
-                yield nx.dijkstra_path(super_dep_graph.graph, high_node, low_node)
+                yield nx.dijkstra_path(rda.graph, high_node, low_node)
             except:
                 pass #No path
     # print("Low")

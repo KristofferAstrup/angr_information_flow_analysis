@@ -19,7 +19,7 @@ sys.path.append('../../../')
 from customutil import util_information, util_explicit, util_implicit, util_out
 
 def main():
-    proj = angr.Project('C:/Users/kristoffer/angrenv/angr_proj_dev/samples/ioflow/implicit4/implicit4.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('samples/ioflow/implicit4/implicit4.out', load_options={'auto_load_libs':False})
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./implicit4.out', arg0])
@@ -48,7 +48,7 @@ def main():
     start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
     high_addrs = [0x00401155, 0x00401158]
 
-    util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node)
+    util_out.draw_super_dep_graph(proj, cfg, cdg, start_node=start_node, high_addrs=high_addrs)
     return
     
     for path in util_implicit.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
