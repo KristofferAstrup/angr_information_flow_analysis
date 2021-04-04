@@ -35,9 +35,9 @@ def main():
     lowAddresses = {0x401172}
     highAddresses = {0x401158, 0x401155}
     
-    for path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
-        print(path)
-        for n in path:
+    for explicit_path in util.find_explicit(proj, ddg, lowAddresses, highAddresses):
+        print(explicit_path.print_path())
+        for n in explicit_path.path:
            print(hex(n.location.ins_addr))
 
     return 0

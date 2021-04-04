@@ -56,7 +56,7 @@ def find_explicit(super_dep_graph, lowAddresses, highAddresses):
     for high_node in high_nodes:
         for low_node in low_nodes:
             try:
-                yield nx.dijkstra_path(super_dep_graph.graph, high_node, low_node)
+                yield ExplicitLeakPath(high_node, low_node, nx.dijkstra_path(super_dep_graph.graph, high_node, low_node))
             except:
                 pass #No path
     # print("Low")
@@ -94,6 +94,8 @@ def link_externals_to_earliest_definition(super_dep_graph, cdg, cdg_end_nodes):
     for external in externals:
         for nn in list(nx.all_neighbors(super_dep_graph.graph, external)):
             cdg_node = util_information.find_cdg_node(cdg, nn.codeloc.block_addr)
+            if not cdg_node:
+                continue
             matches = find_earliest_matching_definition(external, nn, leafs, cdg_end_nodes, cdg_node)
             # print('------------')
             # print(external)
@@ -129,3 +131,15 @@ def get_externals(super_dep_graph):
 def get_leafs(graph):
     leaf_nodes = [node for node in graph.nodes() if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
     return leaf_nodes
+
+class ExplicitLeakPath:
+    def __init__(self, high_node, low_node, path):
+        self.high_node = high_node,
+        self.low_node = low_node
+        self.path = path
+    
+    def __repr__(self):
+        return "<ExplicitLeakPath: From " + str(self.high_node) + "to" + str(self.low_node) + ">"
+
+    def print_path(self):
+        print(self.path)
