@@ -11,10 +11,10 @@ import networkx as nx
 from networkx_query import search_nodes, search_edges
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_explicit, util_implicit, util_out
+from customutil import util_information, util_explicit, util_implicit, util_out, util_rda
 
 def main():
-    proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('samples/ioflow/explicit/explicit.out', load_options={'auto_load_libs':False})
     state = proj.factory.entry_state()
     simgr = proj.factory.simgr(state)
 
@@ -39,6 +39,8 @@ def main():
     start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
     
     rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    rda_graph = util_rda.wrap_rda(rda)
+    rda_graph.rda = rda
 
     explicit_paths = list(util_explicit.find_explicit(rda, low_addrs, high_addrs))
     for path in explicit_paths:

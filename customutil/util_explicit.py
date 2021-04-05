@@ -122,7 +122,10 @@ class ExplicitLeakPath:
         self.path = path
     
     def __repr__(self):
-        return "<ExplicitLeakPath: From " + str(self.high_node) + "to" + str(self.low_node) + ">"
+        return "<ExplicitLeakPath: From " + __simple_node_repr__(self.high_node) + "to" + __simple_node_repr__(self.low_node) + ">"
+
+    def __simple_node_repr__(node):
+        return str(self.high_node.code_loc)
 
     def print_path(self):
         print(self.path)

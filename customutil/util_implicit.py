@@ -7,23 +7,37 @@ import pydot
 from customutil import util_information, util_explicit
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
-    high_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
-    for path in util_explicit.find_explicit(super_dep_graph, lowAddresses, high_addrs):
-        yield path
+def enrich_rda_implicit(rda_graph, high_addrs, subject_addrs):
+    pass
+    # subject_nodes = list(find_rda_graph_nodes(rda_graph, subject_addrs))
+    # for subject_node in subject_nodes:
+    #     subject_node.given_sec_class = 1
+    #     subject_node.sec_class = 1
+    #     descendants = networkx.descendants(rda_graph, subject_node)
+    #     for des in descendants:
+    #         des.sec_class = 1
+    # high_nodes = list(find_rda_graph_nodes(rda_graph, high_addrs))
+    # for high_node in high_nodes:
+    #     high_node.given_sec_class = 2
+    #     high_node.sec_class = 2
+    #     descendants = networkx.descendants(rda_graph, high_node)
+    #     for des in descendants:
+    #         des.sec_class = 2
 
-#Find all high context node instruction addresses:
-def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
-    addrs = []
-    for n in find_high_branch_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
-        addrs.extend(n.instruction_addrs)
-    return addrs
+def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
+    branch_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
+    for high_addrs, branch in branch_addrs:
+        for path in util_explicit.find_explicit(super_dep_graph, lowAddresses, high_addrs):
+            yield ImplicitLeakPath(path)
 
 #Test if branch node creates a high context
 def test_high_branch_context(super_dep_graph, cfg_node, high_addrs):
-    branch_ins = cfg_node.instruction_addrs[len(cfg_node.instruction_addrs)-1]
+    branch_ins = get_branch_ins(cfg_node)
     explicit_paths = list(util_explicit.find_explicit(super_dep_graph, [branch_ins], high_addrs))
-    return len(explicit_paths) > 0 
+    return len(explicit_paths) > 0
+
+def get_branch_ins(cfg_node):
+    return cfg_node.instruction_addrs[len(cfg_node.instruction_addrs)-1]
 
 def test_high_loop_context(super_dep_graph, cfg, loop, high_addrs):
     loop_block_addrs = map(lambda n: n.addr, loop.body_nodes)
@@ -45,6 +59,32 @@ def accumulate_nodes(cfg_node, blacklist, resultlist):
 
 #Find all high branches recursively in cfg starting from given node
 def find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs, blacklist=[]):
+    # if cfg_node in blacklist:
+    #     return []
+    # blacklist.append(cfg_node)
+    # if isinstance(cfg_node, angr.utils.graph.TemporaryNode):
+    #     return []
+    # targets = cfg_node.successors
+    # if len(targets) == 0:
+    #     return []
+    # if len(targets) == 1:
+    #     return find_high_branches(super_dep_graph, post_dom_tree, targets[0], high_addrs, blacklist)
+    # high = test_high_branch_context(super_dep_graph, cfg_node, high_addrs)
+    # if not high:
+    #     leftHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[0], high_addrs, blacklist)
+    #     rightHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[1], high_addrs, blacklist)
+    #     return leftHighs + rightHighs
+    # dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
+    # if dominator == None: #No post-domintor
+    #     #Find lowest common ancestor of subjects
+    #     dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[0], subjects[1])
+    # branch = Branch(cfg_node, subjects, dominator)
+    # rec = find_high_branches(super_dep_graph, post_dom_tree, dominator, high_addrs, blacklist)
+    # return [branch] + rec
+    filter = lambda n: test_high_branch_context(super_dep_graph, n, high_addrs)
+    return find_branches(post_dom_tree, cfg_node, blacklist, filter)
+
+def find_branches(post_dom_tree, cfg_node, blacklist=[], filter=None):
     if cfg_node in blacklist:
         return []
     blacklist.append(cfg_node)
@@ -54,30 +94,55 @@ def find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs, bla
     if len(targets) == 0:
         return []
     if len(targets) == 1:
-        return find_high_branches(super_dep_graph, post_dom_tree, targets[0], high_addrs, blacklist)
-    high = test_high_branch_context(super_dep_graph, cfg_node, high_addrs)
-    if not high:
-        leftHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[0], high_addrs, blacklist)
-        rightHighs = find_high_branches(super_dep_graph, post_dom_tree, targets[1], high_addrs, blacklist)
-        return leftHighs + rightHighs
+        return find_branches(post_dom_tree, targets[0], blacklist, filter)
+    is_included = filter(cfg_node)
+    if not is_included:
+        left = find_branches(post_dom_tree, targets[0], blacklist, filter)
+        right = find_branches(post_dom_tree, targets[1], blacklist, filter)
+        return left + right
     dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
     if dominator == None: #No post-domintor
         #Find lowest common ancestor of subjects
         dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[0], subjects[1])
-    branch = ImplicitBranch(cfg_node, subjects, dominator)
-    rec = find_high_branches(super_dep_graph, post_dom_tree, dominator, high_addrs, blacklist)
+    branch = Branch(cfg_node, subjects, dominator)
+    rec = find_branches(post_dom_tree, dominator, blacklist, filter)
     return [branch] + rec
 
 #Find all high nodes recursively in cfg starting from given node
+#Returns list of (Node[], Branch)
 def find_high_branch_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
-    acc_high_nodes = []
-    for branch in find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
-        high_nodes = []
-        blacklist = [cfg_node, branch.dominator]
+    # acc_high_nodes = []
+    # for branch in find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
+    #     high_nodes = []
+    #     blacklist = [cfg_node, branch.dominator]
+    #     for subject in branch.subjects:
+    #         accumulate_nodes(subject, blacklist, high_nodes)
+    #         acc_high_nodes.append((high_nodes,branch))
+    # return acc_high_nodes
+    high_branches = find_high_branches(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
+    return find_branch_nodes(high_branches, [cfg_node])
+
+def find_branch_nodes(branches, blacklist=[]):
+    acc_nodes = []
+    for branch in branches:
+        nodes = []
+        bblacklist = blacklist.copy()
+        bblacklist.append(branch.dominator)
         for subject in branch.subjects:
-            accumulate_nodes(subject, blacklist, high_nodes)
-            acc_high_nodes.extend(high_nodes)
-    return acc_high_nodes
+            accumulate_nodes(subject, bblacklist, nodes)
+            acc_nodes.append((nodes,branch))
+    return acc_nodes
+
+#Find all high context node instruction addresses
+#Returns list of (int[], Branch)
+def find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
+    branch_addrs = []
+    for high_nodes, branch in find_high_branch_nodes(super_dep_graph, post_dom_tree, cfg_node, high_addrs):
+        ins = []
+        for high_node in high_nodes:
+            ins.extend(high_node.instruction_addrs)
+        branch_addrs.append((ins, branch))
+    return branch_addrs
 
 def find_branch_pdom(post_dom_tree, node1, node2):
     try:
@@ -97,11 +162,23 @@ def find_branch_pdom(post_dom_tree, node1, node2):
     #No postdominance
     return (None, [node1, node2])
 
-class ImplicitBranch:
+class Branch:
     def __init__(self, branch, subjects, dominator):
         self.branch = branch
+        self.branch_ins = get_branch_ins(branch)
         self.subjects = subjects
         self.dominator = dominator
     
     def __repr__(self):
-        return "<Branch: " + str(self.branch) + ", subjects: " + str(self.subjects) + ", dominator: " + str(self.dominator) + ">"
+        return "<Branch on " + str(hex(branch_ins)) + " in " + str(self.branch.addr) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(self.dominator.addr) + ">"
+
+class ImplicitLeakPath(util_explicit.ExplicitLeakPath):
+    def __init__(self, explicit_leak_path, branch):
+        util_explicit.ExplicitLeakPath.__init__(self, explicit_leak_path.high_node, explicit_leak_path.low_node, explicit_leak_path.path)
+        self.branch = branch
+
+    def __repr__(self):
+        return "<ImplicitLeakPath: from " + super().__simple_node_repr__(self.high_node.code_loc) + " in branch @ " + str(hex(self.branch.branch_ins)) + ", to " + super().__simple_node_repr__(self.low_node) + ">"
+
+    def print_path(self):
+        print(self.path)

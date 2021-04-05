@@ -6,6 +6,7 @@ import networkx as nx
 class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Definition):
     given_sec_class = 0
     sec_class = 0
+    implicit_branch = None
     def __repr__(self):
         return str(self.atom) + ", " + str(self.codeloc) + ", <sc " + str(self.sec_class) +\
             (" (" + str(self.given_sec_class) + ")" if self.given_sec_class != 0 else "") + ">"
