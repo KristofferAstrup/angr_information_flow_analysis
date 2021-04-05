@@ -7,7 +7,8 @@ import pydot
 from customutil import util_information, util_explicit
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def enrich_rda_implicit(rda_graph, high_addrs, subject_addrs):
+def enrich_rda_implicit(rda_graph, post_dom_tree, start_node):
+    branches = find_branches(post_dom_tree, start_node)
     pass
     # subject_nodes = list(find_rda_graph_nodes(rda_graph, subject_addrs))
     # for subject_node in subject_nodes:
@@ -24,16 +25,23 @@ def enrich_rda_implicit(rda_graph, high_addrs, subject_addrs):
     #     for des in descendants:
     #         des.sec_class = 2
 
-def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
-    branch_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
-    for high_addrs, branch in branch_addrs:
-        for path in util_explicit.find_explicit(super_dep_graph, lowAddresses, high_addrs):
-            yield ImplicitLeakPath(path)
+# def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
+#     branch_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
+#     for high_addrs, branch in branch_addrs:
+#         for path in util_explicit.find_explicit(super_dep_graph, lowAddresses, high_addrs):
+#             yield ImplicitLeakPath(path)
+
+#find possible implicit information flows using the enriched rda graph
+def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
+    for n in rda_graph.nodes:
+        if ((n.codeloc and n.codeloc.ins_addr in subject_addrs) if subject_addrs else n.given_sec_class == subject_security_class)\
+            and subject_security_class < n.implicit_sec_class:
+            yield ImplicitLeak(n.implicit_source, n)
 
 #Test if branch node creates a high context
-def test_high_branch_context(super_dep_graph, cfg_node, high_addrs):
+def test_high_branch_context(rda_graph, cfg_node, high_addrs):
     branch_ins = get_branch_ins(cfg_node)
-    explicit_paths = list(util_explicit.find_explicit(super_dep_graph, [branch_ins], high_addrs))
+    explicit_paths = list(util_explicit.find_explicit(rda_graph, subject_addrs=branch_ins)
     return len(explicit_paths) > 0
 
 def get_branch_ins(cfg_node):
@@ -172,13 +180,18 @@ class Branch:
     def __repr__(self):
         return "<Branch on " + str(hex(branch_ins)) + " in " + str(self.branch.addr) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(self.dominator.addr) + ">"
 
-class ImplicitLeakPath(util_explicit.ExplicitLeakPath):
-    def __init__(self, explicit_leak_path, branch):
-        util_explicit.ExplicitLeakPath.__init__(self, explicit_leak_path.high_node, explicit_leak_path.low_node, explicit_leak_path.path)
-        self.branch = branch
+class ImplicitLeak(util_explicit.ExplicitLeak):
+    def __init__(self, source, subject):
+        util_explicit.ExplicitLeak.__init__(self, source, subject)
 
     def __repr__(self):
-        return "<ImplicitLeakPath: from " + super().__simple_node_repr__(self.high_node.code_loc) + " in branch @ " + str(hex(self.branch.branch_ins)) + ", to " + super().__simple_node_repr__(self.low_node) + ">"
+        return "<ImplicitLeak: from " + self.__simple_node_repr__(self.source) + " to " + self.__simple_node_repr__(self.subject) + ">"
 
-    def print_path(self):
-        print(self.path)
+    def __simple_node_repr__(self, node):
+        return str(node.codeloc)
+
+    def paths(self, rda_graph):
+        return nx.all_simple_paths(rda_graph, self.source, self.subject)
+
+    def print_path(self, rda_graph):
+        print(next(self.paths(rda_graph)))

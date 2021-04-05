@@ -54,18 +54,27 @@ def draw_everything(proj, simgr, state, start_node=None):
 
     if start_node:
         print("--SUPER_DEP_GRAPH--")
-        draw_super_dep_graph(proj, cfg, cdg, start_node)
+        rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+        draw_rda_graph(proj, rda_graph)
         print("Plotted to super_dep_graph.pdf")
 
-def draw_super_dep_graph(proj, cfg, cdg, start_node, fname="super_dep_graph.pdf", high_addrs=None, subject_addrs=None):
-    rda = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-    rda_graph = util_rda.wrap_rda(rda)
-    if high_addrs and subject_addrs:
-        util_explicit.enrich_rda_explicit(rda_graph, high_addrs, subject_addrs)
+def draw_rda_graph(proj, rda_graph, fname="super_dep_graph.pdf"):
     fig = plt.figure(figsize=(100,100))
     color_map = {0: 0.5, 1: 0.25, 2: 0}
     colors = [color_map[node.sec_class] for node in rda_graph.nodes()]
-    nx.draw(rda_graph, cmap=plt.cm.Set1, node_color=colors, with_labels=True, node_size=1500)
+    pos = nx.spring_layout(rda_graph)
+    nx.draw_networkx_nodes(rda_graph, cmap=plt.cm.Set1, node_color=colors, pos=pos, node_size=1500)
+    nx.draw_networkx_labels(rda_graph, pos)
+    # for e in rda_graph.edges:
+    #     t = rda_graph.get_edge_data(e[0],e[1])['type']
+    #     print(t)
+    edge_labels = {edge: ("implicit" if rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1 else "explicit") for edge in rda_graph.edges}
+    #edge_color = {edge.type for edge in rda_graph.edges}
+    explicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 0, rda_graph.edges))
+    implicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1, rda_graph.edges))
+    nx.draw_networkx_edges(rda_graph, style="solid", edgelist=explicit_edges, pos=pos, width=2.5)
+    nx.draw_networkx_edges(rda_graph, style="dotted", edgelist=implicit_edges, pos=pos, width=2.5, alpha=0.5)
+    nx.draw_networkx_edge_labels(rda_graph, pos=pos, edge_labels=edge_labels)
     fig.savefig(fname, dpi=5)
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):

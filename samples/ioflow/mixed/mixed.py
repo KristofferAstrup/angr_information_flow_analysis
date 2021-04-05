@@ -47,7 +47,7 @@ def main():
                     subject_addrs.append(occ_node[0].location.ins_addr)
 
     start_node = util.find_cfg_node(cfg, start_addr)
-    func_addrs = util.get_unique_reachable_function_addresses(cfg, start_node)
+    func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
     super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
 
     util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])

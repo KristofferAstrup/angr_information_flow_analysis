@@ -4,42 +4,26 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from customutil import util_information
+from customutil import util_information, util_rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def enrich_rda_explicit(rda_graph, high_addrs, subject_addrs):
-    subject_nodes = list(find_rda_graph_nodes(rda_graph, subject_addrs))
-    for subject_node in subject_nodes:
-        subject_node.given_sec_class = 1
-        subject_node.sec_class = 1
-        descendants = networkx.descendants(rda_graph, subject_node)
-        for des in descendants:
-            des.sec_class = 1
-    high_nodes = list(find_rda_graph_nodes(rda_graph, high_addrs))
-    for high_node in high_nodes:
-        high_node.given_sec_class = 2
-        high_node.sec_class = 2
-        descendants = networkx.descendants(rda_graph, high_node)
-        for des in descendants:
-            des.sec_class = 2
+def enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs):
+    high_addrs = list(filter(lambda a: not a in rda_graph.enriched_class_addrs[2], high_addrs))
+    subject_addrs = list(filter(lambda a: not a in rda_graph.enriched_class_addrs[1], subject_addrs))
 
-#Capture all relevant functions (main and all post main in cdg)
-#inclusive
-def get_unique_reachable_function_addresses(cfg, start_node):
-    function_addrs = []
-    for n in nx.descendants(cfg.graph, start_node):
-        if not n.function_address in function_addrs:
-            function_addrs.append(n.function_address)
-    return function_addrs
+    for subject_addr in subject_addrs:
+        rda_graph.enriched_class_addrs[1].append(subject_addr)
+        node = find_rda_graph_node(rda_graph, subject_addr)
+        if not node:
+            continue
+        util_rda.elevate_explicit(rda_graph, node, 1)
 
-#Create rda foreach function
-#Create new super graph containing all rda graphs
-def get_super_dep_graph_with_linking(proj, cfg, cdg, start_node, func_addrs=None):
-    if not func_addrs:
-        func_addrs = get_unique_reachable_function_addresses(cfg, start_node)
-    dep_graph = get_super_dep_graph(proj, func_addrs)
-    link_externals_to_earliest_definition(dep_graph, cdg, [start_node])
-    return dep_graph
+    for high_addr in high_addrs:
+        rda_graph.enriched_class_addrs[2].append(high_addr)
+        node = find_rda_graph_node(rda_graph, high_addr)
+        if not node:
+            continue
+        util_rda.elevate_explicit(rda_graph, node, 2)
 
 def get_super_dep_graph(proj, function_addrs):
     cfg = proj.analyses.CFGFast() #adds info to kb
@@ -60,72 +44,36 @@ def get_super_dep_graph(proj, function_addrs):
 
 def find_rda_graph_nodes(rda_graph, ins_addrs):
     for ins_addr in ins_addrs:
-        for n in rda_graph.nodes():
-            if n.codeloc and n.codeloc.ins_addr == ins_addr:
-                yield n      
-       
-#find possible paths using the super rda dependence graph
-def find_explicit(rda, lowAddresses, highAddresses):
-    low_nodes = list(find_rda_graph_nodes(rda.graph, lowAddresses))
-    high_nodes = list(find_rda_graph_nodes(rda.graph, highAddresses))
-    for high_node in high_nodes:
-        for low_node in low_nodes:
-            try:
-                path = nx.dijkstra_path(rda.graph, high_node, low_node)
-                yield ExplicitLeakPath(high_node, low_node, path)
-            except:
-                pass #No path
-
-def link_externals_to_earliest_definition(super_dep_graph, cdg, cdg_end_nodes):
-    leafs = get_leafs(super_dep_graph.graph)
-    externals = get_externals(super_dep_graph)
-    for external in externals:
-        for nn in list(nx.all_neighbors(super_dep_graph.graph, external)):
-            cdg_node = util_information.find_cdg_node(cdg, nn.codeloc.block_addr)
-            if not cdg_node:
-                continue
-            matches = find_earliest_matching_definition(external, nn, leafs, cdg_end_nodes, cdg_node)
-            for match in matches:
-                super_dep_graph.graph.add_edge(match, nn)
-
-#external is the target external node from which the target is child
-#the target is the node to which we want to link, we need to know it's block_addr
-#leafs are the end-nodes of the super_dep_graph
-#the cdg_node is currently inspected node
-def find_earliest_matching_definition(external, target, leafs, cdg_end_nodes, cdg_node):
-    if cdg_node.block and target.codeloc.block_addr != cdg_node.block.addr:
-        for leaf in leafs:
-            if leaf.codeloc and leaf.codeloc.block_addr == cdg_node.block.addr:
-                if leaf.atom == external.atom:
-                    return [leaf]
-    if cdg_node in cdg_end_nodes:
-        return []
-    caller_blocks = cdg_node.predecessors
-    matches = []
-    for caller_block in caller_blocks:
-        matches += find_earliest_matching_definition(external, target, leafs, cdg_end_nodes, caller_block)
-    return matches
-
-def get_externals(super_dep_graph):
-    for n in super_dep_graph.graph.nodes:
-        if isinstance(n.codeloc, angr.analyses.reaching_definitions.external_codeloc.ExternalCodeLocation):
+        n = find_rda_graph_node(rda_graph, ins_addr)
+        if n:
             yield n
 
-def get_leafs(graph):
-    leaf_nodes = [node for node in graph.nodes() if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-    return leaf_nodes
+def find_rda_graph_node(rda_graph, ins_addr):
+    for n in rda_graph.nodes:
+        if n.codeloc and n.codeloc.ins_addr == ins_addr:
+            return n
+    return None
+       
+#find possible explicit information flows using the enriched rda graph
+def find_explicit(rda_graph, subject_addrs=None, subject_security_class=1):
+    for n in rda_graph.nodes:
+        if ((n.codeloc and n.codeloc.ins_addr in subject_addrs) if subject_addrs else n.given_sec_class == subject_security_class)\
+            and subject_security_class < n.explicit_sec_class:
+            yield ExplicitLeak(n.explicit_source, n)
 
-class ExplicitLeakPath:
-    def __init__(self, high_node, low_node, path):
-        self.high_node = high_node,
-        self.low_node = low_node
-        self.path = path
+class ExplicitLeak:
+    def __init__(self, source, subject):
+        self.source = source
+        self.subject = subject
     
     def __repr__(self):
-        return "<ExplicitLeakPath: From " + __simple_node_repr__(self.high_node) + "to" + __simple_node_repr__(self.low_node) + ">"
+        return "<ExplicitLeak: from " + self.__simple_node_repr__(self.source) + " to " + self.__simple_node_repr__(self.subject) + ">"
 
-    def __simple_node_repr__(node):
-        return str(self.high_node.code_loc)
+    def __simple_node_repr__(self, node):
+        return str(node.codeloc)
 
-    def print_path(self):
-        print(self.path)
+    def paths(self, rda_graph):
+        return nx.all_simple_paths(rda_graph, self.source, self.subject)
+
+    def print_path(self, rda_graph):
+        print(next(self.paths(rda_graph)))

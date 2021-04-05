@@ -85,7 +85,7 @@ class TerminationLeakProof:
 
  # cfg = util_information.cfg_emul(proj, simgr, state)
     # start_node = util_information.find_cfg_node(cfg, 0x401149)
-    # func_addrs = util_explicit.get_unique_reachable_function_addresses(cfg, start_node)
+    # func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
     # funcs = util_information.find_func_from_addrs(proj, func_addrs)
     # loop_res = proj.analyses.LoopFinder(functions=funcs)
     # # for loop in loop_res.loops:

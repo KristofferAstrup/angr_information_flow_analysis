@@ -8,7 +8,7 @@ import copy
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def test_timing_leak(proj, cfg, state, branch):
+def test_timing_leak(proj, cfg, state, branch, epsilon_threshold=0):
     simgr = proj.factory.simgr(state)
     if not state.addr == branch.branch.block.addr:
         simgr.explore(find=branch.branch.addr)
@@ -35,7 +35,7 @@ def test_timing_leak(proj, cfg, state, branch):
         return TimingProcedureLeakProof(branch, proc, res[0], res[1], res[2], res[3])
 
     (min_state, min, max_state, max) = get_min_max(post_progress_states)
-    if min and abs(max-min) > 0:
+    if min and abs(max-min) > epsilon_threshold:
         return TimingEpsilonLeakProof(branch, min_state, min, max_state, max)
     return None
 

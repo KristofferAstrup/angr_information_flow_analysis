@@ -16,7 +16,7 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_explicit, util_implicit, util_out
+from customutil import util_information, util_explicit, util_implicit, util_out, util_rda
 
 def main():
     proj = angr.Project('samples/ioflow/implicit/implicit.out', load_options={'auto_load_libs':False})
@@ -42,14 +42,14 @@ def main():
     arg_regs = util_information.get_sim_proc_reg_args(proj, puts_proc)
 
     start_node = util_information.find_cfg_node(cfg, start_addr)
-    super_dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
 
     subject_addrs = []
     for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(proj, puts_proc):
         for caller in util_information.get_function_node(cdg, wrap_addr).predecessors:
             for reg in arg_regs:
                 offset, size = proj.arch.registers[reg.reg_name]
-                for occ_node in util_information.find_first_reg_occurences_from_cdg_node(cdg, super_dep_graph, caller, offset, start_addr):
+                for occ_node in util_information.find_first_reg_occurences_from_cdg_node(cdg, rda_graph, caller, offset, start_addr):
                     subject_addrs.append(occ_node.codeloc.ins_addr)
 
     post_dom_tree = cdg.get_post_dominators()
@@ -57,9 +57,14 @@ def main():
     start_node = cfg.model.get_all_nodes(addr=0x401149)[0]
     high_addrs = [0x401155, 0x401158]
     
-    for path in util_implicit.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
-        print(path)
+    # for path in util_implicit.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
+    #     print(path)
 
+    
+    util_explicit.enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs)
+    util_implicit.enrich_rda_graph_implicit(rda_graph, high_addrs, subject_addrs)
+
+    util_out.draw_rda_graph(proj, rda_graph)
     return
   
 if __name__ == "__main__":
