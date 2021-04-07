@@ -4,7 +4,7 @@
 #Progress (concolic)
 #Timing (concolic)
 import angr
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing
+from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing, util_rda
 
 class InformationFlowAnalysis:
     def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=[]):
@@ -17,7 +17,7 @@ class InformationFlowAnalysis:
         self.high_addrs = high_addrs
         self.subject_addrs = list(subject_addrs)
         self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
-        self.rda = util_explicit.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
+        self.rda = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
         self.post_dom_tree = self.cdg.get_post_dominators()
 
         self.simgr.explore(find=self.start_node.addr)
@@ -30,14 +30,18 @@ class InformationFlowAnalysis:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
         flows = []
         util_explicit.enrich_rda_graph_explicit(self.rda, self.high_addrs, self.subject_addrs)
-        for explicit_flow in util_explicit.find_explicit(self.rda):
+        for explicit_flow in util_explicit.find_explicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
             flows.append(explicit_flow)
         return flows
 
     def find_implicit_flows(self):
         if not self.subject_addrs:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
-        return
+        flows = []
+        util_implicit.enrich_rda_graph_implicit(self.rda, self.post_dom_tree, self.start_node)
+        for implicit_flow in util_implicit.find_implicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
+            flows.append(implicit_flow)
+        return flows
 
     def find_termination_leaks(self, spinning_state=None, progress_states=None):
         if not spinning_state or not progress_states:
