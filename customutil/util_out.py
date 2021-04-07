@@ -1,25 +1,29 @@
+import os
 import angr
 import angr.analyses.reaching_definitions.dep_graph as dep_graph
 from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from customutil import util_explicit
+import random
+from customutil import util_explicit, util_rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def cfgs(proj, simgr, state):
+    if not os.path.isdir("out"):
+        os.mkdir("out")
     cfg_emul = None
     try:
         print("--CFG--")
         cfg = proj.analyses.CFG()
-        plot_cfg(cfg, "cfg", "pdf")  
+        plot_cfg(cfg, "out/cfg", "pdf")  
         print("Plotted to cfg.pdf")
     except Exception as e:
         print(e)
     try:
         print("--CFGEmulated--")
         cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=5, resolve_indirect_jumps=True)
-        plot_cfg(cfg, "cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
+        plot_cfg(cfg, "out/cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
         print("Plotted to cfg_emul.pdf")
         cfg_emul = cfg
     except Exception as e:
@@ -27,7 +31,7 @@ def cfgs(proj, simgr, state):
     try:
         print("--CFGFast--")
         cfg_fast = proj.analyses.CFGFast()
-        plot_cfg(cfg_fast, "cfg_fast", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)  
+        plot_cfg(cfg_fast, "out/cfg_fast", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)  
         print("Plotted to cfg_fast.pdf")
     except Exception as e:
         print(e)
@@ -38,24 +42,46 @@ def draw_everything(proj, simgr, state, start_node=None):
 
     print("--DDG--")
     ddg = proj.analyses.DDG(cfg = cfg)
-    plot_ddg_data(ddg.data_graph, "ddg", format="pdf")
+    plot_ddg_data(ddg.data_graph, "out/ddg", format="pdf")
     print("Plotted to ddg.pdf")
 
     print("--CDG--")
     cdg = proj.analyses.CDG(cfg = cfg)
-    plot_cdg(cfg, cdg, "cdg", format="pdf")
+    plot_cdg(cfg, cdg, "out/cdg", format="pdf")
     print("Plotted to cdg.pdf")
 
     print("--POST_DOM--")
     postdom = cdg.get_post_dominators()
-    draw_tree(postdom, fname="postdom.pdf")
+    draw_tree(postdom, fname="out/postdom.pdf")
     print("Plotted to postdom.pdf")
 
     if start_node:
-        print("--SUPER_DEP_GRAPH--")
-        dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-        draw_graph(dep_graph.graph, fname="super_dep_graph.pdf")
-        print("Plotted to super_dep_graph.pdf")
+        print("--RDA_GRAPH--")
+        rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+        draw_rda_graph(proj, rda_graph)
+        print("Plotted to rda_graph.pdf")
+
+def draw_rda_graph(proj, rda_graph, fname="out/rda_graph.pdf"):
+    if not os.path.isdir("out"):
+        os.mkdir("out")
+
+    fig = plt.figure(figsize=(100,100))
+    color_map = {0: 0.5, 1: 0.25, 2: 0}
+    colors = [color_map[node.sec_class] for node in rda_graph.nodes()]
+    pos = nx.spring_layout(rda_graph)
+    nx.draw_networkx_nodes(rda_graph, cmap=plt.cm.Set1, node_color=colors, pos=pos)#, node_size=1500)
+    nx.draw_networkx_labels(rda_graph, pos)
+    # for e in rda_graph.edges:
+    #     t = rda_graph.get_edge_data(e[0],e[1])['type']
+    #     print(t)
+    edge_labels = {edge: ("implicit" if rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1 else "explicit") for edge in rda_graph.edges}
+    #edge_color = {edge.type for edge in rda_graph.edges}
+    explicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 0, rda_graph.edges))
+    implicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1, rda_graph.edges))
+    nx.draw_networkx_edges(rda_graph, style="solid", edgelist=explicit_edges, pos=pos, width=2.5)
+    nx.draw_networkx_edges(rda_graph, style="dotted", edgelist=implicit_edges, pos=pos, width=2.5, alpha=0.5)
+    nx.draw_networkx_edge_labels(rda_graph, pos=pos, edge_labels=edge_labels)
+    fig.savefig(fname, dpi=5)
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):
     file = open(filename,"w+") 
@@ -126,12 +152,16 @@ def writefile(string, filename):
 def draw_ddg(ddg):
     draw_graph(ddg.graph, "ddg.pdf")
     
-def draw_graph(graph, fname="graph.pdf"):
+def draw_graph(graph, fname="out/graph.pdf"):
+    if not os.path.isdir("out"):
+        os.mkdir("out")
     fig = plt.figure(figsize=(100,100))
     nx.draw(graph, with_labels=True)
     fig.savefig(fname, dpi=5)
 
-def draw_tree(tree, fname="tree.pdf"):
+def draw_tree(tree, fname="out/tree.pdf"):
+    if not os.path.isdir("out"):
+        os.mkdir("out")
     fig = plt.figure(figsize=(100,100))
     pos = graphviz_layout(tree, prog="dot")
     nx.draw(tree, pos,with_labels=True)

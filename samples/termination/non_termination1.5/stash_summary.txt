@@ -70,30 +70,30 @@ no: 5
 dump[0]: b''
 dump[1]: b'Start\nEnd\n'
 dump[2]: b''
-arg0 C @F        @@@
-C  F          %
+arg0 C  F          %
 C  F           
 C  F          !
+C@ F         @ 
 -----
 no: 6
 0x601068
 dump[0]: b''
 dump[1]: b'Start\nEnd\n'
 dump[2]: b''
-arg0 @D F          @
- D F          %
- D F           
+arg0  D F           
+@D F           
  D F          !
+ D F          %
 -----
 no: 7
 0x601068
 dump[0]: b''
 dump[1]: b'Start\nEnd\n'
 dump[2]: b''
-arg0 CD F@@         
+arg0 CD@F @         
+CD F          %
 CD F           
 CD F          !
-CD F          %
 -----
 no: 8
 0x601068
@@ -665,7 +665,7 @@ dump[0]: b''
 dump[1]: b''
 dump[2]: b''
 arg0                
-  @@@@         
+ @ @           
               !
               )
 -----
@@ -676,18 +676,18 @@ dump[0]: b''
 dump[1]: b'Start\n'
 dump[2]: b''
 arg0   E           !
-@ E    @  @  @ 
   E           %
   E            
+ @E  @  @  @   
 -----
 no: 1
 0x40117f
 dump[0]: b''
 dump[1]: b'Start\n'
 dump[2]: b''
-arg0 C@E @@     @   
-C E   @        
+arg0 C E   @        
 C E           $
+C@E @@@@       
 C E            
 -----
 no: 2
@@ -698,15 +698,15 @@ dump[2]: b''
 arg0  DE   @        
  DE           $
  DE            
- DE @  @@@  @@ 
+ DE@   @ @  @ @
 -----
 no: 3
 0x40117f
 dump[0]: b''
 dump[1]: b'Start\n'
 dump[2]: b''
-arg0 CDE           !
-CDE            
+arg0 CDE @ @ @@ @   
+CDE           !
 CDE           %
-CDE  @@  @ @ @ 
+CDE            
 -----

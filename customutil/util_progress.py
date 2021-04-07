@@ -22,7 +22,6 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
     diff = test_observer_diff_simgr(simgr)
     if diff:
         return ProgressLeakProof(branch, diff[0], diff[1])
-
     return None
 
 def test_observer_diff_simgr(simgr):
@@ -36,6 +35,32 @@ def test_observer_diff_simgr(simgr):
         else:
             return (prev_state, found)
     return None
+
+def init_progress_recording(proj, state, subject_addrs):
+    for subject_addr in subject_addrs:
+        proj.hook(subject_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
+    state.register_plugin(ProgressRecordPlugin.NAME, ProgressRecordPlugin({}))
+
+def procedure_hook(proj, state, arg_regs):
+    plugin = state.plugins[ProcedureRecordPlugin.NAME]
+    call = []
+    for arg_reg in arg_regs:
+        offset, size = proj.arch.registers[arg_reg.reg_name]
+        reg = state.registers.load(offset, size)
+        val = state.solver.eval(reg)
+        call += (reg,val)
+    plugin.records.extend(call)
+
+class ProgressRecordPlugin(angr.SimStatePlugin):
+    NAME = 'progress_record_plugin'
+
+    def __init__(self, records):
+        super(ProgressRecordPlugin, self).__init__()
+        self.records = copy.deepcopy(records)
+
+    @angr.SimStatePlugin.memo
+    def copy(self, memo):
+        return ProgressRecordPlugin(self.records)
 
 class ProgressLeakProof:
     def __init__(self, branch, state1, state2):

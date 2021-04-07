@@ -14,10 +14,12 @@ import angr.analyses.reaching_definitions.dep_graph as dep_graph
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress
+from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_timing
 
 def main():
-    proj = angr.Project('simple_sleep.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./simple_sleep.out', load_options={'auto_load_libs':False})
+
+    arg_regs = list(util_information.get_arg_regs(proj))
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
@@ -28,11 +30,27 @@ def main():
         state.add_constraints(byte >= '\x21') # '!'
         state.add_constraints(byte <= '\x7e') # '~'
 
-    #simgr.run()
+    cfg = util_information.cfg_emul(proj, simgr, state)
+    cdg = proj.analyses.CDG(cfg = cfg)
 
-    util_out.draw_everything(proj, simgr, state)
+    high_addrs = [0x00401175, 0x00401178]
+    start_addr = 0x401169 #main entry block
+    start_node = cfg.model.get_any_node(addr=start_addr)
 
-    #util_out.write_stashes(simgr, args=[arg0])
+    post_dom_tree = cdg.get_post_dominators()
+    dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+
+    branches = util_implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
+
+    simgr.explore(find=start_addr)
+    if len(simgr.found) < 1:
+        raise("No main entry block state found!")
+    state = simgr.found[0]
+
+    for branch in branches:
+        leak = util_timing.test_timing_leak(proj, cfg, state, branch)
+        if leak:
+            print(leak)
 
 if __name__ == "__main__":
     main()

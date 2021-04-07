@@ -6,6 +6,15 @@ import networkx as nx
 import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 
+#Capture all relevant functions (main and all post main in cdg)
+#inclusive
+def get_unique_reachable_function_addresses(cfg, start_node):
+    function_addrs = []
+    for n in nx.descendants(cfg.graph, start_node):
+        if not n.function_address in function_addrs:
+            function_addrs.append(n.function_address)
+    return function_addrs
+
 # def find_procedure_nodes(proj, ddg, sim_proc_name, regBlacklist=None):
 #     if regBlacklist == None:
 #         regBlacklist = [proj.arch.ip_offset]
@@ -206,30 +215,30 @@ def find_func_from_addrs(proj, addrs):
 def find_func_from_addr(proj, addr):
     return proj.kb.functions.get_by_addr(addr)
 
-def find_first_reg_occurences_in_cdg_node(super_dep_graph, cfg_node, reg_offset, ins_offset):
+def find_first_reg_occurences_in_cdg_node(rda_graph, cfg_node, reg_offset, ins_offset):
     for ins_addr in reversed(list(cfg_node.instruction_addrs)):
         if ins_offset and ins_addr > ins_offset:
             continue
-        n = get_rda_reg_var(super_dep_graph, ins_addr)
+        n = get_rda_reg_var(rda_graph, ins_addr)
         if n and n.atom.reg_offset == reg_offset:
             return n
     return None
 
-def get_rda_reg_var(super_dep_graph, ins_addr):
-    for node in super_dep_graph.graph.nodes:
+def get_rda_reg_var(rda_graph, ins_addr):
+    for node in rda_graph.nodes:
         if not node.codeloc.ins_addr == ins_addr:
             continue 
         if isinstance(node.atom,angr.knowledge_plugins.key_definitions.atoms.Register) and node.atom:
             return node
 
-def find_first_reg_occurences_from_cdg_node(cdg, super_dep_graph, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
-    occ = find_first_reg_occurences_in_cdg_node(super_dep_graph, cfg_node, reg_offset, ins_offset)
+def find_first_reg_occurences_from_cdg_node(cdg, rda_graph, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
+    occ = find_first_reg_occurences_in_cdg_node(rda_graph, cfg_node, reg_offset, ins_offset)
     if occ:
         return [occ]
     if cfg_node.addr == stop_block_addr:
         return []
     occs = []
     for n in cfg_node.predecessors:
-        occ = find_first_reg_occurences_from_cdg_node(cdg, super_dep_graph, n, reg_offset, stop_block_addr, None)
+        occ = find_first_reg_occurences_from_cdg_node(cdg, rda_graph, n, reg_offset, stop_block_addr, None)
         occs.extend(occ)
     return occs
