@@ -15,8 +15,6 @@ int printer(int argc, char** argv)
 }
 
 int main(int argc, char** argv) {
-    if(argc == 0 || argc > 2)
-        return 1;
     printf("%s\n", "Begin");
     printer(argc, argv);
     printf("%s\n", "End");
