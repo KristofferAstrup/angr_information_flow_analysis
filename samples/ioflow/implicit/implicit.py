@@ -57,12 +57,11 @@ def main():
     start_node = cfg.model.get_all_nodes(addr=0x401149)[0]
     high_addrs = [0x401155, 0x401158]
     
-    # for path in util_implicit.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
-    #     print(path)
-
-    
     util_explicit.enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs)
-    util_implicit.enrich_rda_graph_implicit(rda_graph, high_addrs, subject_addrs)
+    util_implicit.enrich_rda_graph_implicit(rda_graph, post_dom_tree, start_node)
+
+    for path in util_implicit.find_implicit(rda_graph, subject_addrs):
+        print(path)
 
     util_out.draw_rda_graph(proj, rda_graph)
     return

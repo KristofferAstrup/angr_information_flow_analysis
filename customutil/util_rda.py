@@ -8,19 +8,33 @@ from customutil import util_information
 class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Definition):
     def __init__(self, atom, codeloc, data, dummy, tags):
         angr.knowledge_plugins.key_definitions.definition.Definition.__init__(self, atom, codeloc, data, dummy, tags)
-        self.given_sec_class = 0
-        self.explicit_sec_class = 0
-        self.explicit_source = None
-        self.implicit_sec_class = 0
-        self.implicit_branch = None
+        self.given_sec_class = 0 #Explicitly defined sec class, from subj/high_addrs
+        self.explicit_sec_class = 0 #Derived or given explicit sec class
+        self.explicit_source = None #Derived source of explicit sec class
+        self.implicit_sec_class = 0 #Derived implicit sec class
+        self.implicit_source = None #Derived source of implicit sec class
+        self.branch_sec_class = 0 #If branch, the current sec class of the implicit context
 
     @property
     def sec_class(self):
         return max(self.explicit_sec_class, self.implicit_sec_class)
 
+    @property
+    def sec_class_source(self):
+        return self.implicit_source if self.implicit_sec_class > self.explicit_sec_class and self.implicit_source else self.explicit_source
+
     def __repr__(self):
         return "{Atom: " + str(self.atom) + ", Codeloc: " + str(self.codeloc) + ", sc: " + str(self.explicit_sec_class) +\
             (" (" + str(self.implicit_sec_class) + ")" if self.implicit_sec_class != 0 else "") + "}"
+
+#Get intermediate nodes from source
+def get_intermediates(source_node):
+    inters = []
+    source = source_node
+    while(source.sec_class_source and source.sec_class_source != source):
+        inters.append(source)
+        source = source.sec_class_source
+    return source, inters
 
 def elevate_explicit(rda_graph, node, given_sec_class):
     node.given_sec_class = given_sec_class
@@ -32,6 +46,16 @@ def elevate_explicit(rda_graph, node, given_sec_class):
             if des.explicit_sec_class < given_sec_class:
                 des.explicit_sec_class = given_sec_class
                 des.explicit_source = node
+
+def elevate_implicit(rda_graph, node, branch_node):
+    if node.explicit_sec_class < branch_node.sec_class:
+        node.implicit_sec_class = branch_node.sec_class
+        node.implicit_source = branch_node
+        descendants = networkx.descendants(rda_graph, node)
+        for des in descendants:
+            if des.explicit_sec_class < branch_node.sec_class:
+                des.implicit_sec_class = branch_node.sec_class
+                des.implicit_source = branch_node
 
 def wrap_rda(rda):
     g = networkx.DiGraph()
@@ -73,9 +97,13 @@ def get_super_rda(proj, function_addrs):
 
 def find_rda_graph_nodes(rda_graph, ins_addrs):
     for ins_addr in ins_addrs:
-        for n in rda_graph.nodes():
+        yield find_rda_graph_node(rda_graph, ins_addr)
+
+def find_rda_graph_node(rda_graph, ins_addr):
+    for n in rda_graph.nodes():
             if n.codeloc and n.codeloc.ins_addr == ins_addr:
-                yield n      
+                return n
+    return None   
 
 def link_externals_to_earliest_definition(rda_graph, cdg, cdg_end_nodes):
     leafs = get_leafs(rda_graph)
