@@ -10,7 +10,7 @@ class InformationFlowAnalysis:
     def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=[]):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
-        self.simgr = proj.factory.simgr(self.state, hierarchy=angr.state_hierarchy.StateHierarchy())
+        self.simgr = proj.factory.simgr(self.state)#, hierarchy=angr.state_hierarchy.StateHierarchy())
         self.cfg = util_information.cfg_emul(self.project, self.simgr, self.state)
         self.ddg = proj.analyses.DDG(cfg = self.cfg)
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
@@ -24,12 +24,13 @@ class InformationFlowAnalysis:
         if len(self.simgr.found) < 1:
             raise("No main entry block state found!")
         self.state = self.simgr.found[0]
+        self.__enrich_rda__()
 
     def find_explicit_flows(self):
         if not self.subject_addrs:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
+        self.__enrich_rda__()
         flows = []
-        util_explicit.enrich_rda_graph_explicit(self.rda, self.high_addrs, self.subject_addrs)
         for explicit_flow in util_explicit.find_explicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
             flows.append(explicit_flow)
         return flows
@@ -37,13 +38,14 @@ class InformationFlowAnalysis:
     def find_implicit_flows(self):
         if not self.subject_addrs:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
+        self.__enrich_rda__()
         flows = []
-        util_implicit.enrich_rda_graph_implicit(self.rda, self.post_dom_tree, self.start_node)
         for implicit_flow in util_implicit.find_implicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
             flows.append(implicit_flow)
         return flows
 
     def find_termination_leaks(self, spinning_state=None, progress_states=None):
+        self.__enrich_rda__()
         if not spinning_state or not progress_states:
             loop_seer = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=100)
             simgr = self.simgr.copy()
@@ -64,6 +66,7 @@ class InformationFlowAnalysis:
         return proofs
 
     def find_timing_leaks(self):
+        self.__enrich_rda__()
         branches = util_implicit.find_high_branches(self.rda, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
         for branch in branches:
@@ -73,6 +76,7 @@ class InformationFlowAnalysis:
         return leaks
 
     def find_progress_leaks(self):
+        self.__enrich_rda__()
         branches = util_implicit.find_high_branches(self.rda, self.post_dom_tree, self.start_node, self.high_addrs)   
         leaks = []
         for branch in branches:
@@ -135,3 +139,7 @@ class InformationFlowAnalysis:
 
         print("No leaks found")
         return []
+
+    def __enrich_rda__(self):
+        util_explicit.enrich_rda_graph_explicit(self.rda, self.high_addrs, self.subject_addrs)
+        util_implicit.enrich_rda_graph_implicit(self.rda, self.post_dom_tree, self.start_node)

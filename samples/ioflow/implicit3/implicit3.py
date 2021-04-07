@@ -25,6 +25,10 @@ def main():
     state = proj.factory.entry_state(args=['./implicit3.out', arg0])
     simgr = proj.factory.simgr(state)
 
+    start_addr = 0x40118f
+    high_addrs = [0x40119b, 0x40119e]
+    subject_addrs = [0x4011b5, 0x401184, 0x4011d2]
+
     cfg = proj.analyses.CFGEmulated(
         keep_state=True, 
         normalize=True, 
@@ -36,17 +40,14 @@ def main():
 
     ddg = proj.analyses.DDG(cfg = cfg)
     cdg = proj.analyses.CDG(cfg = cfg)
-    start_addr = 0x40118f
 
     start_node = util_information.find_cfg_node(cfg, start_addr)
     super_dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
 
-    subject_addrs = [0x4011b5, 0x401184, 0x4011d2]
 
     post_dom_tree = cdg.get_post_dominators()
 
     start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
-    high_addrs = [0x40119b, 0x40119e]
     
     ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
     ifa.find_all_leaks()
