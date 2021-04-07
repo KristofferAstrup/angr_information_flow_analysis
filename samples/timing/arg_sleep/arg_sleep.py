@@ -5,7 +5,7 @@ sys.path.append('../../../')
 from customutil import util_analysis
 
 def main():
-    proj = angr.Project('samples/timing/arg_sleep/arg_sleep.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./arg_sleep.out', load_options={'auto_load_libs':False})
     
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)

@@ -88,7 +88,6 @@ class InformationFlowAnalysis:
     def find_and_add_subject_addrs(self, procedure_name):
         subject_addrs = []
         arg_regs = util_information.get_sim_proc_reg_args(self.project, procedure_name)
-
         for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
             for caller in util_information.get_function_node(self.cdg, wrap_addr).predecessors:
                 for reg in arg_regs:

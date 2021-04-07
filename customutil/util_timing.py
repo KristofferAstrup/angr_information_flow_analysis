@@ -21,10 +21,11 @@ def test_timing_leak(proj, cfg, state, branch, epsilon_threshold=0):
         return None
 
     proc_addr = util_information.get_sim_proc_addr(proj, "sleep")
-    proc = proj._sim_procedures[proc_addr]
-    proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, "sleep")
-    for wrap_addr in proc_wrapper_funcs:
-        proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
+    if proc_addr:
+        proc = proj._sim_procedures[proc_addr]
+        proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, "sleep")
+        for wrap_addr in proc_wrapper_funcs:
+            proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
 
     state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
     simgr.explore(find=branch.dominator.addr, num_find=100000) #High number to ensure we capture all paths

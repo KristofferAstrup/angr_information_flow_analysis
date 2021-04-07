@@ -1,22 +1,8 @@
 import angr
-import monkeyhex
-import inspect
-import re
-from angr import KnowledgeBase
-from angr.sim_variable import SimRegisterVariable, SimConstantVariable
-from angr.code_location import CodeLocation
-from angr.analyses.ddg import ProgramVariable
-from angr.knowledge_plugins.functions.function_manager import FunctionManager
-from angrutils import *
-import networkx as nx
-import angr.analyses.reaching_definitions.dep_graph as dep_graph
-from networkx_query import search_nodes, search_edges
-import matplotlib.pyplot as plt
-import pydot
-from networkx.drawing.nx_pydot import graphviz_layout
+import claripy
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_explicit, util_implicit, util_out, util_analysis
+from customutil import util_analysis, util_out
 
 def main():
     proj = angr.Project('implicit3.out', load_options={'auto_load_libs':False})
@@ -27,36 +13,11 @@ def main():
 
     start_addr = 0x40118f
     high_addrs = [0x40119b, 0x40119e]
-    subject_addrs = [0x4011b5, 0x401184, 0x4011d2]
+    subject_addrs = [0x004011a2, 0x00401184, 0x004011bf]
 
-    cfg = proj.analyses.CFGEmulated(
-        keep_state=True, 
-        normalize=True, 
-        starts=[simgr.active[0].addr],
-        initial_state=state,
-        context_sensitivity_level=5,
-        resolve_indirect_jumps=True
-    )
-
-    ddg = proj.analyses.DDG(cfg = cfg)
-    cdg = proj.analyses.CDG(cfg = cfg)
-
-    start_node = util_information.find_cfg_node(cfg, start_addr)
-    super_dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-
-
-    post_dom_tree = cdg.get_post_dominators()
-
-    start_node = cfg.model.get_all_nodes(addr=start_addr)[0]
-    
     ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
-    ifa.find_all_leaks()
-    # for path in util_implicit.find_implicit(super_dep_graph, post_dom_tree, start_node, subject_addrs, high_addrs):
-    #     print("path")
-    #     for step in path:
-    #         print(hex(step.codeloc.ins_addr))
-
+    leaks = ifa.find_all_leaks()
     return 0
-
+    
 if __name__ == "__main__":
     main()
