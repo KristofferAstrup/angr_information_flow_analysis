@@ -7,7 +7,7 @@ import angr
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing
 
 class InformationFlowAnalysis:
-    def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=None):
+    def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=[]):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
         self.simgr = proj.factory.simgr(self.state, hierarchy=angr.state_hierarchy.StateHierarchy())
@@ -15,7 +15,7 @@ class InformationFlowAnalysis:
         self.ddg = proj.analyses.DDG(cfg = self.cfg)
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
-        self.subject_addrs = subject_addrs
+        self.subject_addrs = list(subject_addrs)
         self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
         self.rda = util_explicit.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
         self.post_dom_tree = self.cdg.get_post_dominators()
@@ -76,6 +76,20 @@ class InformationFlowAnalysis:
             if leak:
                 leaks.append(leak)
         return leaks
+
+    def find_and_add_subject_addrs(self, procedure_name):
+        subject_addrs = []
+        arg_regs = util_information.get_sim_proc_reg_args(self.project, procedure_name)
+
+        for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
+            for caller in util_information.get_function_node(self.cdg, wrap_addr).predecessors:
+                for reg in arg_regs:
+                    offset, size = self.project.arch.registers[reg.reg_name]
+                    for occ_node in util_information.find_first_reg_occurences_from_cdg_node(self.cdg, self.rda, caller, offset, self.start_node.addr):
+                        subject_addrs.append(occ_node.codeloc.ins_addr)
+        if subject_addrs:
+            self.subject_addrs.extend(subject_addrs)
+        return subject_addrs
 
     def find_all_leaks(self):
         if self.subject_addrs:
