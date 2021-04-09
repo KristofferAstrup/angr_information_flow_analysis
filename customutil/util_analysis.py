@@ -1,8 +1,3 @@
-#Explicit (static)
-#Implicit (static)
-#Termination (concolic)
-#Progress (concolic)
-#Timing (concolic)
 import angr
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing, util_rda
 
@@ -98,6 +93,13 @@ class InformationFlowAnalysis:
             self.subject_addrs.extend(subject_addrs)
         return subject_addrs
 
+    #---Precedence---
+    #   Explicit (static)
+    #   Implicit (static)
+    #   Termination (concolic)
+    #   Progress (concolic)
+    #   Timing (concolic)
+    #----------------
     def find_all_leaks(self):
         if self.subject_addrs:
             explicit_flows = self.find_explicit_flows()

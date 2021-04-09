@@ -11,29 +11,32 @@ from networkx.drawing.nx_pydot import graphviz_layout
 #TODO: Merging + pruning of states accumulated from loop iterations
 #TODO: When finding proof state, consider that we might reach another infinite loop (create approx inf loop list from util.termination)
 def test_observer_diff(proj, cfg, state, branch, bound=100):
-    simgr = proj.factory.simgr(state)
+    start_states = [state]
     if not state.addr == branch.branch.block.addr:
+        simgr = proj.factory.simgr(state)
         simgr.explore(find=branch.branch.addr)
         if len(simgr.found) < 1:
             raise Exception("Could not find branch location")
-        simgr = proj.factory.simgr(simgr.found[0])
-    simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
-    simgr.explore(find=branch.dominator.addr, num_find=bound*10) #num_find=bound+10; try to take all while detect inf loops
-    diff = test_observer_diff_simgr(simgr)
-    if diff:
-        return ProgressLeakProof(branch, diff[0], diff[1])
+        start_states = simgr.found
+    for start_state in start_states:
+        simgr = proj.factory.simgr(start_state)
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
+        simgr.explore(num_find=bound*10) #num_find=bound+10; try to take all while detect inf loops
+        diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
+        if diff:
+            return ProgressLeakProof(branch, diff[0], diff[1])
     return None
 
-def test_observer_diff_simgr(simgr):
+def test_observer_diff_simgr(states):
     prev_state = None
     prev_val = None
-    for found in simgr.found:
-        val = found.posix.dumps(1)
+    for state in states:
+        val = state.posix.dumps(1)
         if prev_val == None or val == prev_val:
             prev_val = val
-            prev_state = found
+            prev_state = state
         else:
-            return (prev_state, found)
+            return (prev_state, state)
     return None
 
 def init_progress_recording(proj, state, subject_addrs):
