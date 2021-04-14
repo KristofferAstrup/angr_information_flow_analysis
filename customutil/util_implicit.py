@@ -18,20 +18,22 @@ def enrich_rda_graph_implicit(rda_graph, post_dom_tree, start_node):
                 change = True
 
 def __enrich_rda_graph_implicit__(rda_graph, branch_ins_to_nodes_map, branch):
-    branch_ins_rda_node = util_rda.find_rda_graph_node(rda_graph, branch.branch_ins)
-    if not branch_ins_rda_node:
-        return False
-    if branch_ins_rda_node.branch_sec_class >= branch_ins_rda_node.sec_class:
-        return False
-    branch_ins_rda_node.branch_sec_class = branch_ins_rda_node.sec_class
-    for node in branch_ins_to_nodes_map[branch.branch_ins]:
-        for ins in node.instruction_addrs:
-            ins_rda_node = util_rda.find_rda_graph_node(rda_graph, ins)
-            if not ins_rda_node:
-                continue
-            rda_graph.add_edge(branch_ins_rda_node,ins_rda_node,type=1) #Implicit edge
-            util_rda.elevate_implicit(rda_graph, ins_rda_node, branch_ins_rda_node)
-    return True
+    change = False
+    for branch_ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, branch.branch_ins):
+        if not branch_ins_rda_node:
+            continue
+        if branch_ins_rda_node.branch_sec_class >= branch_ins_rda_node.sec_class:
+            continue
+        branch_ins_rda_node.branch_sec_class = branch_ins_rda_node.sec_class
+        for node in branch_ins_to_nodes_map[branch.branch_ins]:
+            for ins in node.instruction_addrs:
+                for ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, ins):
+                    if not ins_rda_node:
+                        continue
+                    rda_graph.add_edge(branch_ins_rda_node,ins_rda_node,type=1) #Implicit edge
+                    util_rda.elevate_implicit(rda_graph, ins_rda_node, branch_ins_rda_node)
+        change = True
+    return change
 
 # def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
 #     branch_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
@@ -50,10 +52,10 @@ def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
 #Test if branch node creates a high context
 def test_high_branch_context(rda_graph, cfg_node, high_addrs):
     branch_ins = get_branch_ins(cfg_node)
-    branch_ins_rda_node = util_rda.find_rda_graph_node(rda_graph, branch_ins)
-    return branch_ins_rda_node.sec_class == 2
-    #explicit_paths = list(util_explicit.find_explicit(rda_graph, subject_addrs=branch_ins)
-    #return len(explicit_paths) > 0
+    for branch_ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, branch_ins):
+        if branch_ins_rda_node.sec_class == 2:
+            return True
+    return False
 
 def get_branch_ins(cfg_node):
     return cfg_node.instruction_addrs[len(cfg_node.instruction_addrs)-1]
@@ -108,14 +110,6 @@ def find_branches(post_dom_tree, cfg_node, blacklist=[], filter=None):
 #Find all high nodes recursively in cfg starting from given node
 #Returns list of (Node[], Branch)
 def find_high_branch_nodes(rda_graph, post_dom_tree, cfg_node, high_addrs):
-    # acc_high_nodes = []
-    # for branch in find_high_branches(rda_graph, post_dom_tree, cfg_node, high_addrs):
-    #     high_nodes = []
-    #     blacklist = [cfg_node, branch.dominator]
-    #     for subject in branch.subjects:
-    #         accumulate_nodes(subject, blacklist, high_nodes)
-    #         acc_high_nodes.append((high_nodes,branch))
-    # return acc_high_nodes
     high_branches = find_high_branches(rda_graph, post_dom_tree, cfg_node, high_addrs)
     return find_branches_nodes(high_branches, [cfg_node])
 
@@ -171,7 +165,7 @@ class Branch:
         self.dominator = dominator
     
     def __repr__(self):
-        return "<Branch on " + str(hex(branch_ins)) + " in " + str(self.branch.addr) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(self.dominator.addr) + ">"
+        return "<Branch on " + str(hex(self.branch_ins)) + " in " + str(hex(self.branch.addr)) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(hex(self.dominator.addr)) + ">"
 
 class ImplicitLeak():
     def __init__(self, source, inters, subject):

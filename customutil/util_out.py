@@ -14,13 +14,6 @@ def cfgs(proj, simgr, state):
         os.mkdir("out")
     cfg_emul = None
     try:
-        print("--CFG--")
-        cfg = proj.analyses.CFG()
-        plot_cfg(cfg, "out/cfg", "pdf")  
-        print("Plotted to cfg.pdf")
-    except Exception as e:
-        print(e)
-    try:
         print("--CFGEmulated--")
         cfg = proj.analyses.CFGEmulated(keep_state=True, normalize=True, starts=[simgr.active[0].addr], initial_state=state, context_sensitivity_level=5, resolve_indirect_jumps=True)
         plot_cfg(cfg, "out/cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
@@ -40,11 +33,15 @@ def cfgs(proj, simgr, state):
 def draw_everything(proj, simgr, state, start_node=None):
     cfg = cfgs(proj, simgr, state)
 
-    print("--DDG--")
-    ddg = proj.analyses.DDG(cfg = cfg)
-    plot_ddg_data(ddg.data_graph, "out/ddg", format="pdf")
-    print("Plotted to ddg.pdf")
+    draw_cfg_dependent_graphs(cfg)
 
+    if start_node:
+        print("--RDA_GRAPH--")
+        rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+        draw_rda_graph(proj, rda_graph)
+        print("Plotted to rda_graph.pdf")
+
+def draw_cfg_dependent_graphs(cfg):
     print("--CDG--")
     cdg = proj.analyses.CDG(cfg = cfg)
     plot_cdg(cfg, cdg, "out/cdg", format="pdf")
@@ -54,12 +51,6 @@ def draw_everything(proj, simgr, state, start_node=None):
     postdom = cdg.get_post_dominators()
     draw_tree(postdom, fname="out/postdom.pdf")
     print("Plotted to postdom.pdf")
-
-    if start_node:
-        print("--RDA_GRAPH--")
-        rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-        draw_rda_graph(proj, rda_graph)
-        print("Plotted to rda_graph.pdf")
 
 def draw_rda_graph(proj, rda_graph, fname="out/rda_graph.pdf"):
     if not os.path.isdir("out"):
@@ -82,6 +73,30 @@ def draw_rda_graph(proj, rda_graph, fname="out/rda_graph.pdf"):
     nx.draw_networkx_edges(rda_graph, style="dotted", edgelist=implicit_edges, pos=pos, width=2.5, alpha=0.5)
     nx.draw_networkx_edge_labels(rda_graph, pos=pos, edge_labels=edge_labels)
     fig.savefig(fname, dpi=5)
+
+def draw_everything_with_data(proj, cfg_emul, cfg_fast, cdg, postdom, rda_graph):
+    if not os.path.isdir("out"):
+        os.mkdir("out")
+    
+    print("--CFGEmulated--")
+    plot_cfg(cfg_emul, "out/cfg_emul", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)
+    print("Plotted to cfg_emul.pdf")
+
+    print("--CFGFast--")
+    plot_cfg(cfg_fast, "out/cfg_fast", "pdf", asminst=True, remove_imports=True, remove_path_terminator=True)  
+    print("Plotted to cfg_fast.pdf")
+
+    print("--CDG--")
+    plot_cdg(cfg_emul, cdg, "out/cdg", format="pdf")
+    print("Plotted to cdg.pdf")
+
+    print("--POST_DOM--")
+    draw_tree(postdom, fname="out/postdom.pdf")
+    print("Plotted to postdom.pdf")
+
+    print("--RDA_GRAPH--")
+    draw_rda_graph(proj, rda_graph)
+    print("Plotted to rda_graph.pdf")
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):
     file = open(filename,"w+") 

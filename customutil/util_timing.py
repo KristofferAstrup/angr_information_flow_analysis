@@ -5,30 +5,31 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 import copy
+import sys
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
-        record_procedures = [{"sleep", None}]
+        record_procedures = [("sleep", None)]
 
-    start_states = state
+    start_states = [state]
     simgr = proj.factory.simgr(state)
     if not state.addr == branch.branch.block.addr:
-        simgr.explore(find=branch.branch.addr)
+        simgr.explore(find=branch.branch.addr, num_find=sys.maxsize)
         if len(simgr.found) < 1:
             raise Exception("Could not find branch location")
         start_states = simgr.found
 
     hook_addrs = []
-    for timed_procedure in record_procedures:
-        proc_name = timed_procedure[0]
+    for record_procedure in record_procedures:
+        proc_name = record_procedure[0]
         proc_addr = util_information.get_sim_proc_addr(proj, proc_name)
         if proc_addr:
-            proc = proj.timed_procedure[proc_addr]
+            proc = proj._sim_procedures[proc_addr]
             proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
             for wrap_addr in proc_wrapper_funcs:
-                args = proc.cc.args if not timed_procedure[1] else timed_procedure[1]
+                args = proc.cc.args if not record_procedure[1] else record_procedure[1]
                 proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, args))
                 hook_addrs.append(wrap_addr)
 
@@ -37,11 +38,11 @@ def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_proc
         simgr = proj.factory.simgr(start_state)
 
         start_state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
-        simgr.explore(find=branch.dominator.addr, num_find=100000) #High number to ensure we capture all paths
+        simgr.explore(find=branch.dominator.addr, num_find=100) #High number to ensure we capture all paths
         if len(simgr.found) < 2:
             continue
         
-        post_progress_states = list(filter(lambda s: has_post_progress(proj, s), simgr.found))
+        post_progress_states = list(filter(lambda s: s, map(lambda s: get_post_progress_state(proj, s), simgr.found)))
         
         for timed_procedure in record_procedures:
             res = get_procedure_diff_acc(post_progress_states, timed_procedure[0])
@@ -69,10 +70,16 @@ def procedure_hook(proj, state, procedure, arg_regs):
     plugin.map.setdefault(key, []).append(call)
 
 def has_post_progress(proj, state):
-    #progress = state.posix.dumps(1)
+    progress = state.posix.dumps(1)
     simgr = proj.factory.simgr(state)
     simgr.explore(find=lambda s: len(s.posix.dumps(1)) > len(progress), num_find=1)
-    return len(simgr.found) > 0
+    return simgr.found and len(simgr.found) > 0
+
+def get_post_progress_state(proj, state):
+    progress = state.posix.dumps(1)
+    simgr = proj.factory.simgr(state)
+    simgr.explore(find=lambda s: len(s.posix.dumps(1)) > len(progress), num_find=1)
+    return simgr.found[0] if len(simgr.found) > 0 else None
 
 def get_procedure_diff_acc(states, procedure_name):
     comp_acc_tup = None

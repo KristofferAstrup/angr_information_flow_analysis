@@ -11,8 +11,12 @@ class InformationFlowAnalysis:
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
         self.subject_addrs = list(subject_addrs)
+        if not start_addr:
+            main_node = util_information.find_cfg_function_node(self.cfg, "main")
+            if main_node:
+                start_addr = main_node.addr 
         self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
-        self.rda = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
+        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
         self.post_dom_tree = self.cdg.get_post_dominators()
 
         self.simgr.explore(find=self.start_node.addr)
@@ -26,7 +30,7 @@ class InformationFlowAnalysis:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
         self.__enrich_rda__()
         flows = []
-        for explicit_flow in util_explicit.find_explicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
+        for explicit_flow in util_explicit.find_explicit(rda_graph=self.rda_graph, subject_addrs=self.subject_addrs):
             flows.append(explicit_flow)
         return flows
 
@@ -35,7 +39,7 @@ class InformationFlowAnalysis:
             raise Exception("Please add subject addresses to the InformationFlowAnalysis")
         self.__enrich_rda__()
         flows = []
-        for implicit_flow in util_implicit.find_implicit(rda_graph=self.rda, subject_addrs=self.subject_addrs):
+        for implicit_flow in util_implicit.find_implicit(rda_graph=self.rda_graph, subject_addrs=self.subject_addrs):
             flows.append(implicit_flow)
         return flows
 
@@ -57,13 +61,14 @@ class InformationFlowAnalysis:
             spinning_state = simgr.spinning[0]
             progress_states = simgr.deadended
 
-        proofs = util_termination.get_termination_leak(self.rda, self.cfg, self.high_addrs, spinning_state, progress_states)
+        proofs = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, progress_states)
         return proofs
 
     def find_timing_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda, self.post_dom_tree, self.start_node, self.high_addrs)
+        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
+        print(branches)
         for branch in branches:
             for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branch):
                 leaks.append(leak)
@@ -71,7 +76,7 @@ class InformationFlowAnalysis:
 
     def find_progress_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda, self.post_dom_tree, self.start_node, self.high_addrs)   
+        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
         leaks = []
         for branch in branches:
             leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branch)
@@ -86,7 +91,7 @@ class InformationFlowAnalysis:
             for caller in util_information.get_function_node(self.cdg, wrap_addr).predecessors:
                 for reg in arg_regs:
                     offset, size = self.project.arch.registers[reg.reg_name]
-                    for occ_node in util_information.find_first_reg_occurences_from_cdg_node(self.cdg, self.rda, caller, offset, self.start_node.addr):
+                    for occ_node in util_information.find_first_reg_occurences_from_cdg_node(self.cdg, self.rda_graph, caller, offset, self.start_node.addr):
                         subject_addrs.append(occ_node.codeloc.ins_addr)
         if subject_addrs:
             self.subject_addrs.extend(subject_addrs)
@@ -141,5 +146,9 @@ class InformationFlowAnalysis:
         return []
 
     def __enrich_rda__(self):
-        util_explicit.enrich_rda_graph_explicit(self.rda, self.high_addrs, self.subject_addrs)
-        util_implicit.enrich_rda_graph_implicit(self.rda, self.post_dom_tree, self.start_node)
+        util_explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.subject_addrs)
+        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.post_dom_tree, self.start_node)
+
+    def draw_everything(self):
+        self.cfg_fast = proj.analyses.CFGFast()
+        util_out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)

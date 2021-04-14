@@ -208,6 +208,12 @@ def find_cfg_node(cfg, block_addr):
             return n
     return None
 
+def find_cfg_function_node(cfg, function_name):
+    for n in cfg.graph.nodes:
+        if n.name == function_name:
+            return n
+    return None
+
 def find_func_from_addrs(proj, addrs):
     for addr in addrs:
         yield proj.kb.functions.get_by_addr(addr)
