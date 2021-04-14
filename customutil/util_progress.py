@@ -39,6 +39,7 @@ def test_observer_diff_simgr(states):
             return (prev_state, state)
     return None
 
+#not used atm
 def init_progress_recording(proj, state, subject_addrs):
     for subject_addr in subject_addrs:
         proj.hook(subject_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
@@ -51,7 +52,7 @@ def procedure_hook(proj, state, arg_regs):
         offset, size = proj.arch.registers[arg_reg.reg_name]
         reg = state.registers.load(offset, size)
         val = state.solver.eval(reg)
-        call += (reg,val)
+        call.append(reg,val)
     plugin.records.extend(call)
 
 class ProgressRecordPlugin(angr.SimStatePlugin):

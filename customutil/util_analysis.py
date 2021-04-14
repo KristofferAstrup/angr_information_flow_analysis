@@ -65,8 +65,7 @@ class InformationFlowAnalysis:
         branches = util_implicit.find_high_branches(self.rda, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
         for branch in branches:
-            leak = util_timing.test_timing_leak(self.project, self.cfg, self.state, branch)
-            if leak:
+            for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branch):
                 leaks.append(leak)
         return leaks
 

@@ -5,9 +5,6 @@ int main(int argc, char** argv) {
     if(argv[1][0] > 60) {
         t = 1;
     }
-    if(argv[1][0] > 65) {
-        t = 2;
-    }
     if(t > 1) {
         printf("%s\n", "!");
     }
