@@ -5,40 +5,58 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 import copy
+import sys
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def test_timing_leak(proj, cfg, state, branch, epsilon_threshold=0):
+def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_procedures=None):
+    if not record_procedures:
+        record_procedures = [("sleep", None)]
+
+    start_states = [state]
     simgr = proj.factory.simgr(state)
     if not state.addr == branch.branch.block.addr:
-        simgr.explore(find=branch.branch.addr)
+        simgr.explore(find=branch.branch.addr, num_find=sys.maxsize)
         if len(simgr.found) < 1:
             raise Exception("Could not find branch location")
-        state = simgr.found[0]
-        simgr = proj.factory.simgr(state)
-    #Check that state has progress already
-    if len(state.posix.dumps(1)) == 0:
-        return None
+        start_states = simgr.found
 
-    proc_addr = util_information.get_sim_proc_addr(proj, "sleep")
-    if proc_addr:
-        proc = proj._sim_procedures[proc_addr]
-        proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, "sleep")
-        for wrap_addr in proc_wrapper_funcs:
-            proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
+    hook_addrs = []
+    for record_procedure in record_procedures:
+        proc_name = record_procedure[0]
+        proc_addr = util_information.get_sim_proc_addr(proj, proc_name)
+        if proc_addr:
+            proc = proj._sim_procedures[proc_addr]
+            proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
+            for wrap_addr in proc_wrapper_funcs:
+                args = proc.cc.args if not record_procedure[1] else record_procedure[1]
+                proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, args))
+                hook_addrs.append(wrap_addr)
 
-    state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
-    simgr.explore(find=branch.dominator.addr, num_find=100000) #High number to ensure we capture all paths
-    post_progress_states = list(filter(lambda s: has_post_progress(proj, s), simgr.found))
+    leaks = []
+    for start_state in start_states:
+        simgr = proj.factory.simgr(start_state)
+
+        start_state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
+        simgr.explore(find=branch.dominator.addr, num_find=100) #High number to ensure we capture all paths
+        if len(simgr.found) < 2:
+            continue
+        
+        post_progress_states = list(filter(lambda s: s, map(lambda s: get_post_progress_state(proj, s), simgr.found)))
+        
+        for timed_procedure in record_procedures:
+            res = get_procedure_diff_acc(post_progress_states, timed_procedure[0])
+            if res:
+                leaks.append(TimingProcedureLeakProof(branch, proc, res[0], res[1], res[2], res[3]))
+
+        (min_state, min, max_state, max) = get_min_max(post_progress_states)
+        if min and abs(max-min) > epsilon_threshold:
+            leaks.append(TimingEpsilonLeakProof(branch, min_state, min, max_state, max))
     
-    res = get_procedure_diff_acc(post_progress_states, "sleep")
-    if res:
-        return TimingProcedureLeakProof(branch, proc, res[0], res[1], res[2], res[3])
+    for addr in hook_addrs:
+        proj.unhook(addr)
 
-    (min_state, min, max_state, max) = get_min_max(post_progress_states)
-    if min and abs(max-min) > epsilon_threshold:
-        return TimingEpsilonLeakProof(branch, min_state, min, max_state, max)
-    return None
+    return leaks
 
 def procedure_hook(proj, state, procedure, arg_regs):
     plugin = state.plugins[ProcedureRecordPlugin.NAME]
@@ -55,7 +73,13 @@ def has_post_progress(proj, state):
     progress = state.posix.dumps(1)
     simgr = proj.factory.simgr(state)
     simgr.explore(find=lambda s: len(s.posix.dumps(1)) > len(progress), num_find=1)
-    return len(simgr.found) > 0
+    return simgr.found and len(simgr.found) > 0
+
+def get_post_progress_state(proj, state):
+    progress = state.posix.dumps(1)
+    simgr = proj.factory.simgr(state)
+    simgr.explore(find=lambda s: len(s.posix.dumps(1)) > len(progress), num_find=1)
+    return simgr.found[0] if len(simgr.found) > 0 else None
 
 def get_procedure_diff_acc(states, procedure_name):
     comp_acc_tup = None

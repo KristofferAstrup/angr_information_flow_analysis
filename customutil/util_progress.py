@@ -4,6 +4,7 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
+import sys
 from customutil import util_out
 from networkx.drawing.nx_pydot import graphviz_layout
 
@@ -21,7 +22,7 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
     for start_state in start_states:
         simgr = proj.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
-        simgr.explore(num_find=bound*10) #num_find=bound+10; try to take all while detect inf loops
+        simgr.explore(num_find=sys.maxint) #num_find=bound+10; try to take all while detect inf loops
         diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
         if diff:
             return ProgressLeakProof(branch, diff[0], diff[1])
@@ -39,6 +40,7 @@ def test_observer_diff_simgr(states):
             return (prev_state, state)
     return None
 
+#not used atm
 def init_progress_recording(proj, state, subject_addrs):
     for subject_addr in subject_addrs:
         proj.hook(subject_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
@@ -51,7 +53,7 @@ def procedure_hook(proj, state, arg_regs):
         offset, size = proj.arch.registers[arg_reg.reg_name]
         reg = state.registers.load(offset, size)
         val = state.solver.eval(reg)
-        call += (reg,val)
+        call.append(reg,val)
     plugin.records.extend(call)
 
 class ProgressRecordPlugin(angr.SimStatePlugin):

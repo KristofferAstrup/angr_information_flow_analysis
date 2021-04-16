@@ -13,17 +13,17 @@ def enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs):
 
     for subject_addr in subject_addrs:
         rda_graph.enriched_class_addrs[1].append(subject_addr)
-        node = find_rda_graph_node(rda_graph, subject_addr)
-        if not node:
-            continue
-        util_rda.elevate_explicit(rda_graph, node, 1)
+        for node in util_rda.find_rda_graph_nodes(rda_graph, subject_addr):
+            if not node:
+                continue
+            util_rda.elevate_explicit(rda_graph, node, 1)
 
     for high_addr in high_addrs:
         rda_graph.enriched_class_addrs[2].append(high_addr)
-        node = find_rda_graph_node(rda_graph, high_addr)
-        if not node:
-            continue
-        util_rda.elevate_explicit(rda_graph, node, 2)
+        for node in util_rda.find_rda_graph_nodes(rda_graph, high_addr):
+            if not node:
+                continue
+            util_rda.elevate_explicit(rda_graph, node, 2)
 
 def get_super_dep_graph(proj, function_addrs):
     cfg = proj.analyses.CFGFast() #adds info to kb
@@ -41,18 +41,6 @@ def get_super_dep_graph(proj, function_addrs):
         )
         rda_dep_graph = rda.dep_graph
     return rda_dep_graph
-
-def find_rda_graph_nodes(rda_graph, ins_addrs):
-    for ins_addr in ins_addrs:
-        n = find_rda_graph_node(rda_graph, ins_addr)
-        if n:
-            yield n
-
-def find_rda_graph_node(rda_graph, ins_addr):
-    for n in rda_graph.nodes:
-        if n.codeloc and n.codeloc.ins_addr == ins_addr:
-            return n
-    return None
        
 #find possible explicit information flows using the enriched rda graph
 def find_explicit(rda_graph, subject_addrs=None, subject_security_class=1):

@@ -96,10 +96,13 @@ def get_super_rda(proj, function_addrs):
     return rda_dep_graph
 
 def find_rda_graph_nodes(rda_graph, ins_addrs):
-    for ins_addr in ins_addrs:
-        yield find_rda_graph_node(rda_graph, ins_addr)
+    if not isinstance(ins_addrs, list):
+        ins_addrs = [ins_addrs]
+    for n in rda_graph.nodes():
+        if n.codeloc and n.codeloc.ins_addr in ins_addrs:
+            yield n
 
-def find_rda_graph_node(rda_graph, ins_addr):
+def __find_rda_graph_node__(rda_graph, ins_addr):
     for n in rda_graph.nodes():
             if n.codeloc and n.codeloc.ins_addr == ins_addr:
                 return n
