@@ -68,7 +68,6 @@ class InformationFlowAnalysis:
         self.__enrich_rda__()
         branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
-        print(branches)
         for branch in branches:
             for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branch):
                 leaks.append(leak)
@@ -111,14 +110,14 @@ class InformationFlowAnalysis:
                 print("Found explicit flow(s):")
                 print(explicit_flows)
                 return explicit_flows
-            print("Found no explicit flow(s):")
+            print("Found no explicit flow(s)")
 
             implicit_flows = self.find_implicit_flows()
             if implicit_flows:
                 print("Found implicit flow(s):")
                 print(implicit_flows)
                 return implicit_flows
-            print("Found no implicit flow(s):")
+            print("Found no implicit flow(s)")
         else:
             print("No subject addresses found, skipping implicit/explicit")
         termination_leaks = self.find_termination_leaks()
@@ -126,21 +125,21 @@ class InformationFlowAnalysis:
             print("Found termination leak(s):")
             print(termination_leaks)
             return termination_leaks
-        print("Found no termination leak(s):")
+        print("Found no termination leak(s)")
 
         progress_leaks = self.find_progress_leaks()
         if len(list(progress_leaks)) > 0:
             print("Found progress leak(s):")
             print(progress_leaks)
             return progress_leaks
-        print("Found progress leak(s):")
+        print("Found no progress leak(s)")
 
         timing_leaks = self.find_timing_leaks()
         if timing_leaks:
             print("Found timing leak(s):")
             print(timing_leaks)
             return timing_leaks
-        print("Found no timing leak(s):")
+        print("Found no timing leak(s)")
 
         print("No leaks found")
         return []
@@ -150,5 +149,5 @@ class InformationFlowAnalysis:
         util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.post_dom_tree, self.start_node)
 
     def draw_everything(self):
-        self.cfg_fast = proj.analyses.CFGFast()
+        self.cfg_fast = self.project.analyses.CFGFast()
         util_out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)

@@ -6,6 +6,6 @@ int main(int argc, char** argv) {
     {
     	str = "highcontext";
     }
-    str = ""; //If flow-sensitive, this should remove any insecure flow through str
+    str = ""; //Because of flow-sensitivity, this removes insecure flow through str
     printf("%s\n", str);
 }
