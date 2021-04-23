@@ -9,7 +9,7 @@ import sys
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_procedures=None):
+def test_timing_leaks(proj, cfg, state, branch, bound=10, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
         record_procedures = [("sleep", None)]
 
@@ -35,21 +35,20 @@ def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_proc
 
     leaks = []
     for start_state in start_states:
+        progress = start_state.posix.dumps(1)
         simgr = proj.factory.simgr(start_state)
-
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=True))
+        
         start_state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
-        simgr.explore(find=branch.dominator.addr, num_find=100) #High number to ensure we capture all paths
-        if len(simgr.found) < 2:
-            continue
-        
-        post_progress_states = list(filter(lambda s: s, map(lambda s: get_post_progress_state(proj, s), simgr.found)))
-        
+        simgr.run()
+        states = simgr.deadended + (simgr.spinning if hasattr(simgr, 'spinning') else [])
+
         for timed_procedure in record_procedures:
-            res = get_procedure_diff_acc(post_progress_states, timed_procedure[0])
+            res = get_procedure_diff_acc(states, timed_procedure[0])
             if res:
                 leaks.append(TimingProcedureLeakProof(branch, proc, res[0], res[1], res[2], res[3]))
 
-        (min_state, min, max_state, max) = get_min_max(post_progress_states)
+        (min_state, min, max_state, max) = get_min_max(states)
         if min and abs(max-min) > epsilon_threshold:
             leaks.append(TimingEpsilonLeakProof(branch, min_state, min, max_state, max))
     

@@ -11,7 +11,7 @@ from networkx.drawing.nx_pydot import graphviz_layout
 #Returns ProgressLeakProof if a observable diff exists in branch
 #TODO: Merging + pruning of states accumulated from loop iterations
 #TODO: When finding proof state, consider that we might reach another infinite loop (create approx inf loop list from util.termination)
-def test_observer_diff(proj, cfg, state, branch, bound=100):
+def test_observer_diff(proj, cfg, state, branch, bound=10):
     start_states = [state]
     if not state.addr == branch.branch.block.addr:
         simgr = proj.factory.simgr(state)
@@ -21,8 +21,8 @@ def test_observer_diff(proj, cfg, state, branch, bound=100):
         start_states = simgr.found
     for start_state in start_states:
         simgr = proj.factory.simgr(start_state)
-        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=False))
-        simgr.explore(num_find=sys.maxsize) #num_find=bound+10; try to take all while detect inf loops
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=True))
+        simgr.run()
         diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
         if diff:
             return ProgressLeakProof(branch, diff[0], diff[1])

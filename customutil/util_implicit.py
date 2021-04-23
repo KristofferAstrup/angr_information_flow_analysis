@@ -35,12 +35,6 @@ def __enrich_rda_graph_implicit__(rda_graph, branch_ins_to_nodes_map, branch):
         change = True
     return change
 
-# def find_implicit(super_dep_graph, post_dom_tree, cfg_node, lowAddresses, high_addrs):
-#     branch_addrs = find_high_node_addrs(super_dep_graph, post_dom_tree, cfg_node, high_addrs)
-#     for high_addrs, branch in branch_addrs:
-#         for path in util_explicit.find_explicit(super_dep_graph, lowAddresses, high_addrs):
-#             yield ImplicitLeakPath(path)
-
 #find possible implicit information flows using the enriched rda graph
 def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
     for n in rda_graph.nodes:
@@ -165,7 +159,7 @@ class Branch:
         self.dominator = dominator
     
     def __repr__(self):
-        return "<Branch on " + str(hex(self.branch_ins)) + " in " + str(hex(self.branch.addr)) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(hex(self.dominator.addr)) + ">"
+        return "<Branch on " + str(hex(self.branch_ins)) + " in " + str(hex(self.branch.addr)) + ", subjects: " + str(list(map(lambda n: hex(n.addr), self.subjects))) + ", dominator: " + str(self.dominator) + ">"
 
 class ImplicitLeak():
     def __init__(self, source, inters, subject):
