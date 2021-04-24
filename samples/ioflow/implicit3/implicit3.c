@@ -2,14 +2,14 @@
 
 int printer(int argc, char** argv)
 {
-    char* str;
-    if(argc == 1)
-    {
-        str = "first";
-    }
-    else if(argc == 2)
+    char* str = "first";
+    if(argc == 2)
     {
         str = "second";
+    }
+    else if(argc >= 3)
+    {
+        str = "third or more";
     }
     printf("%s\n", str);
 }
