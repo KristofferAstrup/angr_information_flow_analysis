@@ -16,7 +16,8 @@ class InformationFlowAnalysis:
             if main_node:
                 start_addr = main_node.addr 
         self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
-        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
+        self.function_addrs = util_information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
+        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
         self.post_dom_tree = self.cdg.get_post_dominators()
 
         self.simgr.explore(find=self.start_node.addr)

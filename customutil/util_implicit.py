@@ -77,6 +77,9 @@ def find_high_branches(rda_graph, post_dom_tree, cfg_node, high_addrs, blacklist
     filter = lambda n: test_high_branch_context(rda_graph, n, high_addrs)
     return find_branches(post_dom_tree, cfg_node, blacklist, filter)
 
+def find_branches_naive(cdg, start_node):
+    pass
+
 def find_branches(post_dom_tree, cfg_node, blacklist=[], filter=None):
     if cfg_node in blacklist:
         return []

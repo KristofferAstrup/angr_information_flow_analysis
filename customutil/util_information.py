@@ -6,7 +6,7 @@ import networkx as nx
 import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 
-#Capture all relevant functions (main and all post main in cdg)
+#Capture all relevant functions (main and all post main in cfg)
 #inclusive
 def get_unique_reachable_function_addresses(cfg, start_node):
     function_addrs = []

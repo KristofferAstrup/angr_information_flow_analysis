@@ -5,7 +5,7 @@ sys.path.append('../../../')
 from customutil import util_analysis, util_implicit
 
 def main():
-    proj = angr.Project('implicit3.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('samples/ioflow/implicit3/implicit3.out', load_options={'auto_load_libs':False})
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./implicit3.out', arg0])
@@ -16,6 +16,7 @@ def main():
     subject_addrs = [0x004011a2, 0x00401184, 0x004011bf]
 
     ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
+    ifa.draw_everything()
     leaks = ifa.find_all_leaks()
     return 0
     
