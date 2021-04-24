@@ -2,7 +2,7 @@ import angr
 import claripy
 import sys
 sys.path.append('../../../')
-from customutil import util_analysis, util_out
+from customutil import util_analysis, util_implicit
 
 def main():
     proj = angr.Project('implicit3.out', load_options={'auto_load_libs':False})
