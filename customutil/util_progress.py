@@ -8,16 +8,16 @@ import sys
 from customutil import util_out
 from networkx.drawing.nx_pydot import graphviz_layout
 
-#Returns ProgressLeakProof if a observable diff exists in branch
+#Returns ProgressLeakProof if a observable diff exists through branching
 #TODO: Merging + pruning of states accumulated from loop iterations
 #TODO: When finding proof state, consider that we might reach another infinite loop (create approx inf loop list from util.termination)
-def test_observer_diff(proj, cfg, state, branch, bound=10):
+def test_observer_diff(proj, cfg, state, branching, bound=10):
     start_states = [state]
-    if not state.addr == branch.branch.block.addr:
+    if not state.addr == branching.node.block.addr:
         simgr = proj.factory.simgr(state)
-        simgr.explore(find=branch.branch.addr)
+        simgr.explore(find=branching.node.addr)
         if len(simgr.found) < 1:
-            raise Exception("Could not find branch location")
+            raise Exception("Could not find branching location")
         start_states = simgr.found
     for start_state in start_states:
         simgr = proj.factory.simgr(start_state)
@@ -25,7 +25,7 @@ def test_observer_diff(proj, cfg, state, branch, bound=10):
         simgr.run()
         diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
         if diff:
-            return ProgressLeakProof(branch, diff[0], diff[1])
+            return ProgressLeakProof(branching, diff[0], diff[1])
     return None
 
 def test_observer_diff_simgr(states):
@@ -68,10 +68,10 @@ class ProgressRecordPlugin(angr.SimStatePlugin):
         return ProgressRecordPlugin(self.records)
 
 class ProgressLeakProof:
-    def __init__(self, branch, state1, state2):
-        self.branch = branch
+    def __init__(self, branching, state1, state2):
+        self.branching = branching
         self.state1 = state1
         self.state2 = state2
     
     def __repr__(self):
-        return "<ProgressLeakProof @ branch: " + str(hex(self.branch.branch.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
+        return "<ProgressLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"

@@ -23,7 +23,7 @@ class InformationFlowAnalysis:
         self.function_addrs = util_information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
         self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
         self.post_dom_tree = self.cdg.get_post_dominators()
-
+        
         self.simgr.explore(find=self.start_node.addr)
         if len(self.simgr.found) < 1:
             raise("No main entry block state found!")
@@ -71,19 +71,19 @@ class InformationFlowAnalysis:
 
     def find_timing_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
-        for branch in branches:
-            for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branch):
+        for branching in branchings:
+            for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branching):
                 leaks.append(leak)
         return leaks
 
     def find_progress_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
         leaks = []
-        for branch in branches:
-            leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branch)
+        for branching in branchings:
+            leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branching)
             if leak:
                 leaks.append(leak)
         return leaks
@@ -114,46 +114,46 @@ class InformationFlowAnalysis:
         if self.subject_addrs:
             explicit_flows = self.find_explicit_flows()
             if len(list(explicit_flows)) > 0:
-                print("Found explicit flow(s):")
+                print(f"Found {len(explicit_flows)} explicit flow{('s' if len(explicit_flows) > 1 else '')}:")
                 print(explicit_flows)
                 return explicit_flows
-            print("Found no explicit flow(s)")
+            print("Found no explicit flows")
 
             implicit_flows = self.find_implicit_flows()
             if implicit_flows:
-                print("Found implicit flow(s):")
+                print(f"Found {len(implicit_flows)} implicit flow{'s' if len(implicit_flows) > 1 else ''}:")
                 print(implicit_flows)
                 return implicit_flows
-            print("Found no implicit flow(s)")
+            print("Found no implicit flows")
         else:
             print("No subject addresses found, skipping implicit/explicit")
         termination_leaks = self.find_termination_leaks()
         if len(list(termination_leaks)) > 0:
-            print("Found termination leak(s):")
+            print(f"Found {len(termination_leaks)} termination leak{'s' if len(termination_leaks) > 1 else ''}:")
             print(termination_leaks)
             return termination_leaks
-        print("Found no termination leak(s)")
+        print("Found no termination leaks")
 
         progress_leaks = self.find_progress_leaks()
         if len(list(progress_leaks)) > 0:
-            print("Found progress leak(s):")
+            print(f"Found {len(progress_leaks)} progress leak{'s' if len(progress_leaks) > 1 else ''}:")
             print(progress_leaks)
             return progress_leaks
-        print("Found no progress leak(s)")
+        print("Found no progress leaks")
 
         timing_leaks = self.find_timing_leaks()
         if timing_leaks:
-            print("Found timing leak(s):")
+            print(f"Found {len(timing_leaks)} timing leak{'s' if len(timing_leaks) > 1 else ''}:")
             print(timing_leaks)
             return timing_leaks
-        print("Found no timing leak(s)")
+        print("Found no timing leaks")
 
         print("No leaks found")
         return []
 
     def __enrich_rda__(self):
         util_explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.subject_addrs)
-        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.post_dom_tree, self.start_node)
+        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
 
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()

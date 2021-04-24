@@ -13,7 +13,7 @@ class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Defi
         self.explicit_source = None #Derived source of explicit sec class
         self.implicit_sec_class = 0 #Derived implicit sec class
         self.implicit_source = None #Derived source of implicit sec class
-        self.branch_sec_class = 0 #If branch, the current sec class of the implicit context
+        self.branching_sec_class = 0 #If a branching node, the current sec class of the implicit context
 
     @property
     def sec_class(self):

@@ -17,7 +17,7 @@ def main():
     high_addrs = [0x00401175, 0x00401178]
     start_addr = 0x401169 #main entry block
     
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     for leak in ifa.find_timing_leaks():
         print(leak)
 

@@ -15,7 +15,7 @@ def main():
     high_addrs = [0x401155, 0x401158]
     subject_addrs = [0x401168, 0x40118a]
     
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
     leaks = ifa.find_all_leaks()
     return 0
     

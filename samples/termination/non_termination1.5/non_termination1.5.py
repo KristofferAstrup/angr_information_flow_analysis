@@ -46,7 +46,7 @@ def main():
     simgr.explore()
 
     util_out.write_stashes(simgr, args=[arg0], verbose=False)
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     proofs = ifa.find_termination_leaks()
     #proofs = util_termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
     #print(proofs)
