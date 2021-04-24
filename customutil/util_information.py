@@ -165,12 +165,6 @@ def get_sim_proc_function_wrapper_addrs(proj, sim_proc_name):
             f, t = l
             yield f
 
-def get_function_node(cdg, function_addr):
-    for n in cdg.graph.nodes():
-        if n.addr == function_addr:
-            return n
-    return None
-
 def get_final_ins_for_cdg_node(cdg_node):
     return cdg_node.instruction_addrs[len(cdg_node.instruction_addrs)-1]
 
@@ -208,6 +202,12 @@ def find_cfg_node(cfg, block_addr):
             return n
     return None
 
+def find_cfg_nodes(cfg, block_addr):
+    for n in cfg.graph.nodes:
+        if n.addr == block_addr:
+            yield n
+    return None
+
 def find_cfg_function_node(cfg, function_name):
     for n in cfg.graph.nodes:
         if n.name == function_name:
@@ -221,30 +221,38 @@ def find_func_from_addrs(proj, addrs):
 def find_func_from_addr(proj, addr):
     return proj.kb.functions.get_by_addr(addr)
 
-def find_first_reg_occurences_in_cdg_node(rda_graph, cfg_node, reg_offset, ins_offset):
-    for ins_addr in reversed(list(cfg_node.instruction_addrs)):
+def find_first_reg_occurences_in_cfg_node(rda_graph, cfg_node, reg_offset, ins_offset):
+    if not cfg_node.block:
+        return None
+    for ins in reversed(cfg_node.block.capstone.insns):
+        ins_addr = ins.address
         if ins_offset and ins_addr > ins_offset:
             continue
-        n = get_rda_reg_var(rda_graph, ins_addr)
-        if n and n.atom.reg_offset == reg_offset:
-            return n
+        if len(ins.operands) < 1:
+            continue
+        left_operand = ins.operands[0]
+        if left_operand.reg * 2 == reg_offset or left_operand.access == 2 or left_operand.access == 3:
+            return ins_addr
     return None
 
-def get_rda_reg_var(rda_graph, ins_addr):
+def get_rda_reg_vars(rda_graph, ins_addr):
     for node in rda_graph.nodes:
         if not node.codeloc.ins_addr == ins_addr:
             continue 
         if isinstance(node.atom,angr.knowledge_plugins.key_definitions.atoms.Register) and node.atom:
-            return node
+            yield node
 
-def find_first_reg_occurences_from_cdg_node(cdg, rda_graph, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
-    occ = find_first_reg_occurences_in_cdg_node(rda_graph, cfg_node, reg_offset, ins_offset)
-    if occ:
-        return [occ]
+def find_first_reg_occurences_from_cfg_node(rda_graph, cfg_node, reg_offset, stop_block_addr, ins_offset = None):
+    occ_addr = find_first_reg_occurences_in_cfg_node(rda_graph, cfg_node, reg_offset, ins_offset)
+    if occ_addr:
+        for reg_var in get_rda_reg_vars(rda_graph, occ_addr):
+            if reg_var and reg_var.atom.reg_offset == reg_offset:
+                return [reg_var]
+        return []
     if cfg_node.addr == stop_block_addr:
         return []
     occs = []
     for n in cfg_node.predecessors:
-        occ = find_first_reg_occurences_from_cdg_node(cdg, rda_graph, n, reg_offset, stop_block_addr, None)
+        occ = find_first_reg_occurences_from_cfg_node(rda_graph, n, reg_offset, stop_block_addr, None)
         occs.extend(occ)
     return occs

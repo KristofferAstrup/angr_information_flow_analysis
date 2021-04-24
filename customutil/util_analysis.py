@@ -2,7 +2,7 @@ import angr
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing, util_rda
 
 class InformationFlowAnalysis:
-    def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=[]):
+    def __init__(self, proj, high_addrs, state=None, start=None, subject_addrs=[]):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
         self.simgr = proj.factory.simgr(self.state)#, hierarchy=angr.state_hierarchy.StateHierarchy())
@@ -11,11 +11,15 @@ class InformationFlowAnalysis:
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
         self.subject_addrs = list(subject_addrs)
-        if not start_addr:
-            main_node = util_information.find_cfg_function_node(self.cfg, "main")
-            if main_node:
-                start_addr = main_node.addr 
-        self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
+
+        self.start_node = None
+        if isinstance(start, int):
+            self.start_node = self.cfg.model.get_any_node(addr=start)
+        if isinstance(start, str):
+            self.start_node = util_information.find_cfg_function_node(self.cfg, start)
+        if not self.start_node:
+            self.start_node = self.cfg.model.get_any_node(addr=self.state.addr)
+
         self.function_addrs = util_information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
         self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
         self.post_dom_tree = self.cdg.get_post_dominators()
@@ -88,11 +92,13 @@ class InformationFlowAnalysis:
         subject_addrs = []
         arg_regs = util_information.get_sim_proc_reg_args(self.project, procedure_name)
         for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
-            for caller in util_information.get_function_node(self.cdg, wrap_addr).predecessors:
-                for reg in arg_regs:
-                    offset, size = self.project.arch.registers[reg.reg_name]
-                    for occ_node in util_information.find_first_reg_occurences_from_cdg_node(self.cdg, self.rda_graph, caller, offset, self.start_node.addr):
-                        subject_addrs.append(occ_node.codeloc.ins_addr)
+            for wrapper in util_information.find_cfg_nodes(self.cfg, wrap_addr):
+                for caller in wrapper.predecessors:
+                    for reg in arg_regs:
+                        offset, size = self.project.arch.registers[reg.reg_name]
+                        for occ_node in util_information.find_first_reg_occurences_from_cfg_node(self.rda_graph, caller, offset, self.start_node.addr):
+                            subject_addrs.append(occ_node.codeloc.ins_addr)
+        subject_addrs = list(set(subject_addrs))
         if subject_addrs:
             self.subject_addrs.extend(subject_addrs)
         return subject_addrs

@@ -11,12 +11,10 @@ def main():
     state = proj.factory.entry_state(args=['./implicit3.out', arg0])
     simgr = proj.factory.simgr(state)
 
-    start_addr = 0x40118f
-    high_addrs = [0x40119b, 0x40119e]
-    subject_addrs = [0x004011a2, 0x00401184, 0x004011bf]
+    high_addrs = [0x4011a6, 0x4011a9]
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs, subject_addrs=subject_addrs)
-    ifa.draw_everything()
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
+    subject_addrs = ifa.find_and_add_subject_addrs("puts")
     leaks = ifa.find_all_leaks()
     return 0
     
