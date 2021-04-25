@@ -2,7 +2,7 @@ import angr
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing, util_rda
 
 class InformationFlowAnalysis:
-    def __init__(self, proj, high_addrs, state=None, start_addr=None, subject_addrs=[]):
+    def __init__(self, proj, high_addrs, state=None, start=None, subject_addrs=[]):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
         self.simgr = proj.factory.simgr(self.state)#, hierarchy=angr.state_hierarchy.StateHierarchy())
@@ -11,14 +11,19 @@ class InformationFlowAnalysis:
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
         self.subject_addrs = list(subject_addrs)
-        if not start_addr:
-            main_node = util_information.find_cfg_function_node(self.cfg, "main")
-            if main_node:
-                start_addr = main_node.addr 
-        self.start_node = self.cfg.model.get_any_node(addr=start_addr if start_addr else self.state.addr)
-        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.cdg, self.start_node)
-        self.post_dom_tree = self.cdg.get_post_dominators()
 
+        self.start_node = None
+        if isinstance(start, int):
+            self.start_node = self.cfg.model.get_any_node(addr=start)
+        if isinstance(start, str):
+            self.start_node = util_information.find_cfg_function_node(self.cfg, start)
+        if not self.start_node:
+            self.start_node = self.cfg.model.get_any_node(addr=self.state.addr)
+
+        self.function_addrs = util_information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
+        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
+        self.post_dom_tree = self.cdg.get_post_dominators()
+        
         self.simgr.explore(find=self.start_node.addr)
         if len(self.simgr.found) < 1:
             raise("No main entry block state found!")
@@ -66,19 +71,19 @@ class InformationFlowAnalysis:
 
     def find_timing_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
         leaks = []
-        for branch in branches:
-            for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branch):
+        for branching in branchings:
+            for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branching):
                 leaks.append(leak)
         return leaks
 
     def find_progress_leaks(self):
         self.__enrich_rda__()
-        branches = util_implicit.find_high_branches(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
         leaks = []
-        for branch in branches:
-            leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branch)
+        for branching in branchings:
+            leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branching)
             if leak:
                 leaks.append(leak)
         return leaks
@@ -87,11 +92,13 @@ class InformationFlowAnalysis:
         subject_addrs = []
         arg_regs = util_information.get_sim_proc_reg_args(self.project, procedure_name)
         for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
-            for caller in util_information.get_function_node(self.cdg, wrap_addr).predecessors:
-                for reg in arg_regs:
-                    offset, size = self.project.arch.registers[reg.reg_name]
-                    for occ_node in util_information.find_first_reg_occurences_from_cdg_node(self.cdg, self.rda_graph, caller, offset, self.start_node.addr):
-                        subject_addrs.append(occ_node.codeloc.ins_addr)
+            for wrapper in util_information.find_cfg_nodes(self.cfg, wrap_addr):
+                for caller in wrapper.predecessors:
+                    for reg in arg_regs:
+                        offset, size = self.project.arch.registers[reg.reg_name]
+                        for occ_node in util_information.find_first_reg_occurences_from_cfg_node(self.rda_graph, caller, offset, self.start_node.addr):
+                            subject_addrs.append(occ_node.codeloc.ins_addr)
+        subject_addrs = list(set(subject_addrs))
         if subject_addrs:
             self.subject_addrs.extend(subject_addrs)
         return subject_addrs
@@ -107,46 +114,46 @@ class InformationFlowAnalysis:
         if self.subject_addrs:
             explicit_flows = self.find_explicit_flows()
             if len(list(explicit_flows)) > 0:
-                print("Found explicit flow(s):")
+                print(f"Found {len(explicit_flows)} explicit flow{('s' if len(explicit_flows) > 1 else '')}:")
                 print(explicit_flows)
                 return explicit_flows
-            print("Found no explicit flow(s)")
+            print("Found no explicit flows")
 
             implicit_flows = self.find_implicit_flows()
             if implicit_flows:
-                print("Found implicit flow(s):")
+                print(f"Found {len(implicit_flows)} implicit flow{'s' if len(implicit_flows) > 1 else ''}:")
                 print(implicit_flows)
                 return implicit_flows
-            print("Found no implicit flow(s)")
+            print("Found no implicit flows")
         else:
             print("No subject addresses found, skipping implicit/explicit")
         termination_leaks = self.find_termination_leaks()
         if len(list(termination_leaks)) > 0:
-            print("Found termination leak(s):")
+            print(f"Found {len(termination_leaks)} termination leak{'s' if len(termination_leaks) > 1 else ''}:")
             print(termination_leaks)
             return termination_leaks
-        print("Found no termination leak(s)")
+        print("Found no termination leaks")
 
         progress_leaks = self.find_progress_leaks()
         if len(list(progress_leaks)) > 0:
-            print("Found progress leak(s):")
+            print(f"Found {len(progress_leaks)} progress leak{'s' if len(progress_leaks) > 1 else ''}:")
             print(progress_leaks)
             return progress_leaks
-        print("Found no progress leak(s)")
+        print("Found no progress leaks")
 
         timing_leaks = self.find_timing_leaks()
         if timing_leaks:
-            print("Found timing leak(s):")
+            print(f"Found {len(timing_leaks)} timing leak{'s' if len(timing_leaks) > 1 else ''}:")
             print(timing_leaks)
             return timing_leaks
-        print("Found no timing leak(s)")
+        print("Found no timing leaks")
 
         print("No leaks found")
         return []
 
     def __enrich_rda__(self):
         util_explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.subject_addrs)
-        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.post_dom_tree, self.start_node)
+        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
 
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()

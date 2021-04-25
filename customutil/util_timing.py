@@ -9,16 +9,16 @@ import sys
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_procedures=None):
+def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
         record_procedures = [("sleep", None)]
 
     start_states = [state]
     simgr = proj.factory.simgr(state)
-    if not state.addr == branch.branch.block.addr:
-        simgr.explore(find=branch.branch.addr, num_find=sys.maxsize)
+    if not state.addr == branching.node.block.addr:
+        simgr.explore(find=branching.node.addr, num_find=sys.maxsize)
         if len(simgr.found) < 1:
-            raise Exception("Could not find branch location")
+            raise Exception("Could not find branching location")
         start_states = simgr.found
 
     hook_addrs = []
@@ -35,23 +35,22 @@ def test_timing_leaks(proj, cfg, state, branch, epsilon_threshold=0, record_proc
 
     leaks = []
     for start_state in start_states:
+        progress = start_state.posix.dumps(1)
         simgr = proj.factory.simgr(start_state)
-
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=cfg, bound=bound, limit_concrete_loops=True))
+        
         start_state.register_plugin(ProcedureRecordPlugin.NAME, ProcedureRecordPlugin({}))
-        simgr.explore(find=branch.dominator.addr, num_find=100) #High number to ensure we capture all paths
-        if len(simgr.found) < 2:
-            continue
-        
-        post_progress_states = list(filter(lambda s: s, map(lambda s: get_post_progress_state(proj, s), simgr.found)))
-        
-        for timed_procedure in record_procedures:
-            res = get_procedure_diff_acc(post_progress_states, timed_procedure[0])
-            if res:
-                leaks.append(TimingProcedureLeakProof(branch, proc, res[0], res[1], res[2], res[3]))
+        simgr.run()
+        states = simgr.deadended + (simgr.spinning if hasattr(simgr, 'spinning') else [])
 
-        (min_state, min, max_state, max) = get_min_max(post_progress_states)
+        for timed_procedure in record_procedures:
+            res = get_procedure_diff_acc(states, timed_procedure[0])
+            if res:
+                leaks.append(TimingProcedureLeakProof(branching, proc, res[0], res[1], res[2], res[3]))
+
+        (min_state, min, max_state, max) = get_min_max(states)
         if min and abs(max-min) > epsilon_threshold:
-            leaks.append(TimingEpsilonLeakProof(branch, min_state, min, max_state, max))
+            leaks.append(TimingEpsilonLeakProof(branching, min_state, min, max_state, max))
     
     for addr in hook_addrs:
         proj.unhook(addr)
@@ -135,8 +134,8 @@ class ProcedureRecordPlugin(angr.SimStatePlugin):
         return ProcedureRecordPlugin(self.map)
 
 class TimingProcedureLeakProof:
-    def __init__(self, branch, procedure, state1, calls1, state2, calls2):
-        self.branch = branch
+    def __init__(self, branching, procedure, state1, calls1, state2, calls2):
+        self.branching = branching
         self.procedure = procedure
         self.state1 = state1
         self.calls1 = calls1
@@ -144,15 +143,15 @@ class TimingProcedureLeakProof:
         self.calls2 = calls2
 
     def __repr__(self):
-        return "<TimingProcedureLeakProof @ branch: " + str(hex(self.branch.branch.block.addr)) + ", sim_proc: " + self.procedure.display_name + ", calls_left: " + str(self.calls1) + ", calls_right: " + str(self.calls2) + ">"
+        return "<TimingProcedureLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", sim_proc: " + self.procedure.display_name + ", calls_left: " + str(self.calls1) + ", calls_right: " + str(self.calls2) + ">"
 
 class TimingEpsilonLeakProof:
-    def __init__(self, branch, state1, ins_count1, state2, ins_count2):
-        self.branch = branch
+    def __init__(self, branching, state1, ins_count1, state2, ins_count2):
+        self.branching = branching
         self.state1 = state1
         self.ins_count1 = ins_count1
         self.state2 = state2
         self.ins_count2 = ins_count2
 
     def __repr__(self):
-        return "<TimingEpsilonLeakProof @ branch: " + str(hex(self.branch.branch.block.addr)) + ", eps: " + str(abs(self.ins_count2 - self.ins_count1)) + ">"
+        return "<TimingEpsilonLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", eps: " + str(abs(self.ins_count2 - self.ins_count1)) + ">"

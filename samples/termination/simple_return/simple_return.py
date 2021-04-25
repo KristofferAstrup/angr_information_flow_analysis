@@ -46,7 +46,7 @@ def main():
     #     raise("No main entry block state found!")
     # state = simgr.found[0]
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     leaks = ifa.find_all_leaks()
     # for branch in branches:
     #     leak = util_progress.test_observer_diff(proj, cfg, state, branch)
