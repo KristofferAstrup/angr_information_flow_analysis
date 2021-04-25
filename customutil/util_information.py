@@ -146,7 +146,10 @@ def find_cfg_function_node(cfg, function_name):
 
 def find_func_from_addrs(proj, addrs):
     for addr in addrs:
-        yield proj.kb.functions.get_by_addr(addr)
+        try:
+            yield proj.kb.functions.get_by_addr(addr)
+        except:
+            pass
 
 def find_func_from_addr(proj, addr):
     return proj.kb.functions.get_by_addr(addr)
