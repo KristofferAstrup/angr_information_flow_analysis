@@ -15,7 +15,7 @@ def main():
     start_addr = 0x401149
     high_addrs = [0x401155, 0x401158]
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start_addr=start_addr,high_addrs=high_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     ifa.find_and_add_subject_addrs("puts")
     ifa.find_all_leaks()
     

@@ -13,7 +13,7 @@ class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Defi
         self.explicit_source = None #Derived source of explicit sec class
         self.implicit_sec_class = 0 #Derived implicit sec class
         self.implicit_source = None #Derived source of implicit sec class
-        self.branch_sec_class = 0 #If branch, the current sec class of the implicit context
+        self.branching_sec_class = 0 #If a branching node, the current sec class of the implicit context
 
     @property
     def sec_class(self):
@@ -71,11 +71,11 @@ def wrap_rda(rda):
 
 #Create rda foreach function
 #Create new super graph containing all rda graphs
-def get_super_dep_graph_with_linking(proj, cfg, cdg, start_node, func_addrs=None):
+def get_super_dep_graph_with_linking(proj, cfg, start_node, func_addrs=None):
     if not func_addrs:
         func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
     rda_graph = wrap_rda(get_super_rda(proj, func_addrs))
-    link_externals_to_earliest_definition(rda_graph, cdg, [start_node])
+    link_externals_to_earliest_definition(rda_graph, cfg, [start_node])
     return rda_graph
 
 def get_super_rda(proj, function_addrs):
@@ -108,15 +108,15 @@ def __find_rda_graph_node__(rda_graph, ins_addr):
                 return n
     return None   
 
-def link_externals_to_earliest_definition(rda_graph, cdg, cdg_end_nodes):
+def link_externals_to_earliest_definition(rda_graph, cfg, cfg_end_nodes):
     leafs = get_leafs(rda_graph)
     externals = get_externals(rda_graph)
     for external in externals:
         for nn in list(nx.all_neighbors(rda_graph, external)):
-            cdg_node = util_information.find_cdg_node(cdg, nn.codeloc.block_addr)
-            if not cdg_node:
+            cfg_node = util_information.find_cfg_node(cfg, nn.codeloc.block_addr)
+            if not cfg_node:
                 continue
-            matches = find_earliest_matching_definition(external, nn, leafs, cdg_end_nodes, cdg_node)
+            matches = find_earliest_matching_definition(external, nn, leafs, cfg_end_nodes, cfg_node)
             for match in matches:
                 rda_graph.add_edge(match, nn, type=0)
 
@@ -124,18 +124,18 @@ def link_externals_to_earliest_definition(rda_graph, cdg, cdg_end_nodes):
 #the target is the node to which we want to link, we need to know it's block_addr
 #leafs are the end-nodes of the super_dep_graph
 #the cdg_node is currently inspected node
-def find_earliest_matching_definition(external, target, leafs, cdg_end_nodes, cdg_node):
-    if cdg_node.block and target.codeloc.block_addr != cdg_node.block.addr:
+def find_earliest_matching_definition(external, target, leafs, cfg_end_nodes, cfg_node):
+    if cfg_node.block and target.codeloc.block_addr != cfg_node.block.addr:
         for leaf in leafs:
-            if leaf.codeloc and leaf.codeloc.block_addr == cdg_node.block.addr:
+            if leaf.codeloc and leaf.codeloc.block_addr == cfg_node.block.addr:
                 if leaf.atom == external.atom:
                     return [leaf]
-    if cdg_node in cdg_end_nodes:
+    if cfg_node in cfg_end_nodes:
         return []
-    caller_blocks = cdg_node.predecessors
+    caller_blocks = cfg_node.predecessors
     matches = []
     for caller_block in caller_blocks:
-        matches += find_earliest_matching_definition(external, target, leafs, cdg_end_nodes, caller_block)
+        matches += find_earliest_matching_definition(external, target, leafs, cfg_end_nodes, caller_block)
     return matches
 
 def get_leafs(graph):
