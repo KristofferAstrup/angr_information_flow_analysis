@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-    printf("Hello\n");
     int i = 0;
     if (argv[1][0] == 0x41)
     {
@@ -12,11 +11,12 @@ int main(int argc, char** argv) {
     } else {
         sleep(1);
     }
-    printf("Goodbye\n");
+    printf("Hello\n");
     if(i==0) {
         sleep(1);
     } else {
         sleep(2);
     }
+    printf("Goodbye\n");
     return 0;
 }
