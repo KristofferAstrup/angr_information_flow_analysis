@@ -71,7 +71,7 @@ class InformationFlowAnalysis:
 
     def find_timing_leaks(self):
         self.__enrich_rda__()
-        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.cdg, self.function_addrs, self.high_addrs)
         leaks = []
         for branching in branchings:
             for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branching):
@@ -80,7 +80,7 @@ class InformationFlowAnalysis:
 
     def find_progress_leaks(self):
         self.__enrich_rda__()
-        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.cdg, self.function_addrs, self.high_addrs)   
         leaks = []
         for branching in branchings:
             leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branching)

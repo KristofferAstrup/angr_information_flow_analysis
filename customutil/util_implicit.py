@@ -64,7 +64,7 @@ def test_high_loop_context(rda_graph, cfg, loop, high_addrs):
 def find_high_branchings(rda_graph, cdg, function_addrs, high_addrs):
     for branching in find_branchings(cdg, function_addrs):
         if test_high_branch_context(rda_graph, branching.node, high_addrs):
-            yield n
+            yield branching
 
 #iterator for all branches through CDG
 def find_branchings(cdg, function_addrs):
