@@ -143,6 +143,20 @@ def find_cfg_function_node(cfg, function_name):
         if n.name == function_name:
             return n
     return None
+    
+def find_addrs_of_function(kb, function_name):
+    func = kb.functions.function(name=function_name)
+    if not func:
+        return []
+    addrs = []
+    for block in func.blocks:
+        if hasattr(block, 'instruction_addrs'):
+            addrs.extend(block.instruction_addrs)
+        else:
+            addrs.append(block.addr)
+    for endpoint in func.endpoints:
+        addrs.append(endpoint.addr)
+    return addrs
 
 def find_func_from_addrs(proj, addrs):
     for addr in addrs:

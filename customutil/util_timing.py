@@ -66,7 +66,8 @@ def procedure_hook(proj, state, procedure, arg_regs):
         val = state.solver.eval(reg)
         call[arg_reg.reg_name] = val
     key = procedure.display_name
-    plugin.map.setdefault(key, []).append(call)
+    record = ProcedureRecord(call, state.history.block_count)
+    plugin.map.setdefault(key, []).append(record)
 
 def has_post_progress(proj, state):
     progress = state.posix.dumps(1)
@@ -121,6 +122,11 @@ def get_lineage_instruction_count(state):
         if his.addr:
             count += len(state.block(his.addr).instruction_addrs)
     return count
+
+class ProcedureRecord:
+    def __init__(self, call, depth):
+        self.call = call
+        self.depth = depth
 
 class ProcedureRecordPlugin(angr.SimStatePlugin):
     NAME = 'procedure_record_plugin'

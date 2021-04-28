@@ -33,6 +33,12 @@ def __enrich_rda_graph_implicit__(rda_graph, branching):
         change = True
     return change
 
+def check_addr_high(rda_graph, addr):
+    for n in util_rda.find_rda_graph_nodes(rda_graph, addr):
+        if n.sec_class == 2:
+            return True
+    return False
+
 #find possible implicit information flows using the enriched rda graph
 def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
     for n in rda_graph.nodes:
@@ -75,30 +81,6 @@ def find_branchings(cdg, function_addrs):
         if len(successors) < 1:
             continue
         yield Branching(n, successors)
-
-# def find_branches_old(post_dom_tree, cfg_node, blacklist=[], filter=None):
-#     if cfg_node in blacklist:
-#         return []
-#     blacklist.append(cfg_node)
-#     if isinstance(cfg_node, angr.utils.graph.TemporaryNode):
-#         return []
-#     targets = cfg_node.successors
-#     if len(targets) == 0:
-#         return []
-#     if len(targets) == 1:
-#         return find_branches(post_dom_tree, targets[0], blacklist, filter)
-#     is_included = filter(cfg_node) if filter else True
-#     if not is_included:
-#         left = find_branches(post_dom_tree, targets[0], blacklist, filter)
-#         right = find_branches(post_dom_tree, targets[1], blacklist, filter)
-#         return left + right
-#     dominator, subjects = find_branch_pdom(post_dom_tree, targets[0], targets[1])
-#     if dominator == None: #No post-domintor
-#         #Find lowest common ancestor of subjects
-#         dominator = nx.algorithms.lowest_common_ancestor(post_dom_tree, subjects[0], subjects[1])
-#     branch = Branch(cfg_node, subjects, dominator)
-#     rec = find_branches(post_dom_tree, dominator, blacklist, filter)
-#     return [branch] + rec
 
 class Branching:
     def __init__(self, node, subjects):
