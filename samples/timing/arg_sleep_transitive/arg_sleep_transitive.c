@@ -20,11 +20,11 @@ int main(int argc, char** argv) {
     }
 
     if(argv[1][0] > 'A') {
-        printf("%c",x);
+        sleep(x);
     }
     else
     {
-        printf("%c",x);
+        sleep(x);
     }
 
     printf("Goodbye\n");
