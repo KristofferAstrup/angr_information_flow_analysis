@@ -70,6 +70,11 @@ def get_ddg_reg_var(ddg, ins_addr, reg_offset):
                 return n
     return None
 
+def get_regs(proj):
+    for k in proj.arch.registers:
+        offset, size = proj.arch.registers[k]
+        yield {"name": k, "offset": offset, "size": size}
+
 def get_arg_regs(proj):
     for arg_reg_offset in proj.arch.argument_registers:
         for k in proj.arch.registers:
