@@ -123,6 +123,16 @@ def get_lineage_instruction_count(state):
             count += len(state.block(his.addr).instruction_addrs)
     return count
 
+class TimingFunction:
+    def __init__(self, name, quantifier_delegate):
+        self.name = name
+        self.quantifier_delegate = quantifier_delegate
+
+class TimingInterval:
+    def __init__(self, records, ins_count):
+        self.records = records
+        self.ins_count = ins_count
+
 class ProcedureRecord:
     def __init__(self, call, depth):
         self.call = call

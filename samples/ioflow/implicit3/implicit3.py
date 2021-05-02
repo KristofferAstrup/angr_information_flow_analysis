@@ -15,7 +15,8 @@ def main():
 
     ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
     subject_addrs = ifa.find_and_add_subject_addrs("puts")
-    leaks = ifa.find_all_leaks()
+    ifa.draw_everything()
+    #leaks = ifa.find_all_leaks()
     return 0
     
 if __name__ == "__main__":

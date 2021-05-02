@@ -20,7 +20,7 @@ def main():
     # for reg in util_information.get_regs(proj):
     #     print(reg)
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs,subject_addrs=low_addrs)
+    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
     # high_nodes = util_rda.find_rda_graph_nodes(ifa.rda_graph, 0x401178)
     # low_nodes = util_rda.find_rda_graph_nodes(ifa.rda_graph, [0x401200, 0x40120d])
     # edge_flow = None
@@ -34,9 +34,7 @@ def main():
     # rda_graph = util_rda.get_edge_flow_rda(ifa.rda_graph, edge_flow)
     # util_out.draw_rda_graph(ifa.project, rda_graph, fname="out/edge_flow_rda.pdf")
     # return
-    for leak in ifa.find_explicit_flows():
-        print(leak)
-    for leak in ifa.find_implicit_flows():
+    for leak in ifa.find_timing_leaks():
         print(leak)
 
 if __name__ == "__main__":

@@ -183,10 +183,13 @@ class InformationFlowAnalysis:
         progress_obj = plugin.callfunction.progress_delegate(plugin.callstate, state)
         plugin.callfunction = None
         plugin.callstate = None
-        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count)
+        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count, )
         plugin.records.append(progress_record)
 
     def find_covert_leaks(self, bound=50, epsilon_threshold=0, record_procedures=None, progress_functions=None):
+        if not record_procedures:
+            record_procedures = [("sleep", None)]
+            
         if not progress_functions:
             progress_functions = [
                 util_progress.PutsProgressFunction(self.project.kb),
@@ -201,6 +204,7 @@ class InformationFlowAnalysis:
 
         start_state.inspect.b('simprocedure', when=angr.BP_BEFORE, action=self.call_before_handler)
         start_state.inspect.b('exit', when=angr.BP_AFTER, action=self.call_after_handler)
+        #Make bp for exiting high block (from CDG) and add instruction count to current TimingInterval of TimingPlugin
         start_state.register_plugin(util_progress.ProgressRecordPlugin.NAME, util_progress.ProgressRecordPlugin([],None,None))
         start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({}))
         hook_addrs = []
@@ -232,5 +236,9 @@ class InformationFlowAnalysis:
             leak = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, simgr.deadended)
             if leak:
                 return [leak]
+
+        #
+
+        #For each TimingInterval 
 
         return []

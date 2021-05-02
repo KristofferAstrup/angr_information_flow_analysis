@@ -24,8 +24,9 @@ class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Defi
         return self.implicit_source if self.implicit_sec_class > self.explicit_sec_class and self.implicit_source else self.explicit_source
 
     def __repr__(self):
-        return "{Atom: " + str(self.atom) + ", Codeloc: " + str(self.codeloc) + ", sc: " + str(self.explicit_sec_class) +\
-            (" (" + str(self.implicit_sec_class) + ")" if self.implicit_sec_class != 0 else "") + "}"
+        return "{Atom: " + str(self.atom) + ", Codeloc: " + str(self.codeloc) + ", Exp: " + str(self.explicit_sec_class) +\
+            (", Imp: " + str(self.implicit_sec_class) if self.implicit_sec_class != 0 else "") +\
+            (", Sat: " + str(self.given_sec_class) if self.given_sec_class != 0 else "") + "}"
 
 #Get intermediate nodes from source
 def get_intermediates(source_node):
