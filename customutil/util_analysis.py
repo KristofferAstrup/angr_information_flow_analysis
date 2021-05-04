@@ -51,7 +51,7 @@ class InformationFlowAnalysis:
     def find_termination_leaks(self, spinning_state=None, progress_states=None):
         self.__enrich_rda__()
         if not spinning_state or not progress_states:
-            loop_seer = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=100)
+            loop_seer = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=10)
             simgr = self.simgr.copy()
             simgr.use_technique(loop_seer)
             simgr.explore(find=self.start_node.addr)
@@ -61,8 +61,6 @@ class InformationFlowAnalysis:
             simgr.stash(from_stash='active', to_stash='stash')
             simgr.stash(from_stash='found', to_stash='active')
             simgr.explore()
-            if not spinning_state or not progress_states:
-                return []
             spinning_state = simgr.spinning[0]
             progress_states = simgr.deadended
 
@@ -71,7 +69,7 @@ class InformationFlowAnalysis:
 
     def find_timing_leaks(self):
         self.__enrich_rda__()
-        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.cdg, self.function_addrs, self.high_addrs)
         leaks = []
         for branching in branchings:
             for leak in util_timing.test_timing_leaks(self.project, self.cfg, self.state, branching):
@@ -80,7 +78,7 @@ class InformationFlowAnalysis:
 
     def find_progress_leaks(self):
         self.__enrich_rda__()
-        branchings = util_implicit.find_high_branchings(self.rda_graph, self.post_dom_tree, self.start_node, self.high_addrs)   
+        branchings = util_implicit.find_high_branchings(self.rda_graph, self.cdg, self.function_addrs, self.high_addrs)   
         leaks = []
         for branching in branchings:
             leak = util_progress.test_observer_diff(self.project, self.cfg, self.state, branching)
@@ -158,3 +156,89 @@ class InformationFlowAnalysis:
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()
         util_out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)
+
+    def bound_reached_handler(self, loopSeer, succ_state):
+        self.s = loopSeer
+        loopSeer.cut_succs.append(succ_state)
+        #DO STUFF
+
+    def call_before_handler(self, state):
+        sim_name = state.inspect.simprocedure_name
+        if not sim_name in self.__progress_function_names:
+            return
+        plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
+        plugin.callfunction = self.__progress_function_map[sim_name]
+        plugin.callstate = state
+        pass
+
+    def call_after_handler(self, state):
+        plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
+        if not plugin.callfunction:
+            return
+        if state.addr in plugin.callfunction.addrs:
+            return
+        sim_name = state.inspect.simprocedure_name
+        if not plugin.callstate:
+            return
+        progress_obj = plugin.callfunction.progress_delegate(plugin.callstate, state)
+        plugin.callfunction = None
+        plugin.callstate = None
+        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count, )
+        plugin.records.append(progress_record)
+
+    def find_covert_leaks(self, bound=50, epsilon_threshold=0, record_procedures=None, progress_functions=None):
+        if not record_procedures:
+            record_procedures = [("sleep", None)]
+            
+        if not progress_functions:
+            progress_functions = [
+                util_progress.PutsProgressFunction(self.project.kb),
+                util_progress.PrintfProgressFunction(self.project.kb)
+            ]
+
+        start_state = self.state.copy()
+        simgr = self.project.factory.simgr(start_state)
+        self.__covert_simgr = simgr
+        self.__progress_function_names = list(map(lambda f: f.name, progress_functions))
+        self.__progress_function_map = {f.name : f for f in progress_functions}
+
+        start_state.inspect.b('simprocedure', when=angr.BP_BEFORE, action=self.call_before_handler)
+        start_state.inspect.b('exit', when=angr.BP_AFTER, action=self.call_after_handler)
+        #Make bp for exiting high block (from CDG) and add instruction count to current TimingInterval of TimingPlugin
+        start_state.register_plugin(util_progress.ProgressRecordPlugin.NAME, util_progress.ProgressRecordPlugin([],None,None))
+        start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({}))
+        hook_addrs = []
+        if record_procedures:
+            for record_procedure in record_procedures:
+                proc_name = record_procedure[0]
+                proc_addr = util_information.get_sim_proc_addr(proj, proc_name)
+                if proc_addr:
+                    proc = proj._sim_procedures[proc_addr]
+                    proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
+                    for wrap_addr in proc_wrapper_funcs:
+                        args = proc.cc.args if not record_procedure[1] else record_procedure[1]
+                        proj.hook(wrap_addr, lambda s: util_timing.procedure_hook(proj, s, proc, args))
+                        hook_addrs.append(wrap_addr)
+
+        simgr = self.project.factory.simgr(start_state)
+        simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=bound, limit_concrete_loops=True, bound_reached=self.bound_reached_handler))
+
+        # while(True):
+        #     if len(simgr.active) == 0:
+        #         break
+        #     simgr.step()
+        simgr.run()
+
+        for addr in hook_addrs:
+            proj.unhook(addr)
+
+        for spinning_state in simgr.spinning:
+            leak = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, simgr.deadended)
+            if leak:
+                return [leak]
+
+        #
+
+        #For each TimingInterval 
+
+        return []

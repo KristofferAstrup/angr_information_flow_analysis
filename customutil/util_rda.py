@@ -24,8 +24,9 @@ class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Defi
         return self.implicit_source if self.implicit_sec_class > self.explicit_sec_class and self.implicit_source else self.explicit_source
 
     def __repr__(self):
-        return "{Atom: " + str(self.atom) + ", Codeloc: " + str(self.codeloc) + ", sc: " + str(self.explicit_sec_class) +\
-            (" (" + str(self.implicit_sec_class) + ")" if self.implicit_sec_class != 0 else "") + "}"
+        return "{Atom: " + str(self.atom) + ", Codeloc: " + str(self.codeloc) + ", Exp: " + str(self.explicit_sec_class) +\
+            (", Imp: " + str(self.implicit_sec_class) if self.implicit_sec_class != 0 else "") +\
+            (", Sat: " + str(self.given_sec_class) if self.given_sec_class != 0 else "") + "}"
 
 #Get intermediate nodes from source
 def get_intermediates(source_node):
@@ -65,7 +66,7 @@ def wrap_rda(rda):
         map[n] = decorator
         g.add_node(decorator)
     for e in rda.graph.edges:
-        g.add_edge(map[e[0]],map[e[1]],type=0)
+        g.add_edge(map[e[0]],map[e[1]],type=0) #Explicit
     g.enriched_class_addrs = {0:[],1:[],2:[]}
     return g
 
@@ -118,7 +119,7 @@ def link_externals_to_earliest_definition(rda_graph, cfg, cfg_end_nodes):
                 continue
             matches = find_earliest_matching_definition(external, nn, leafs, cfg_end_nodes, cfg_node)
             for match in matches:
-                rda_graph.add_edge(match, nn, type=0)
+                rda_graph.add_edge(match, nn, type=0) #Explicit
 
 #external is the target external node from which the target is child
 #the target is the node to which we want to link, we need to know it's block_addr
@@ -146,3 +147,32 @@ def get_externals(rda_graph):
     for n in rda_graph.nodes:
         if isinstance(n.codeloc, angr.analyses.reaching_definitions.external_codeloc.ExternalCodeLocation):
             yield n
+
+def check_explicit_flow(rda_graph, source, target):
+    paths = nx.all_simple_edge_paths(rda_graph, source=source, target=target)
+    for path in paths:
+        valid = True
+        for edge in path:
+            if rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1:
+                valid = False
+                break
+        if valid:
+            return path
+    return None
+
+def print_edge_flow(edge_flow):
+    print(edge_flow[0][0].codeloc)
+    for edge in edge_flow:
+        print(edge[1].codeloc)
+
+def get_edge_flow_rda(rda_graph, edge_flow):
+    rda_graph = rda_graph.copy()
+    node_whitelist = []
+    node_whitelist.append(edge_flow[0][0])
+    for edge in edge_flow:
+        node_whitelist.append(edge[1])
+    remove = [node for node in rda_graph.nodes if not node in node_whitelist]
+    rda_graph.remove_nodes_from(remove)
+    remove = [edge for edge in rda_graph.edges if not edge in edge_flow]
+    rda_graph.remove_edges_from(remove)
+    return rda_graph

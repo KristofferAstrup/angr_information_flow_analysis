@@ -5,7 +5,7 @@ sys.path.append('../../../')
 from customutil import util_analysis
 
 def main():
-    proj = angr.Project('samples/ioflow/implicit2/implicit2.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('implicit2.out', load_options={'auto_load_libs':False})
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./implicit2.out', arg0])
