@@ -4,19 +4,24 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
+import copy
 from customutil import util_information, util_explicit, util_rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def enrich_rda_graph_implicit(rda_graph, cdg, function_addrs):
+    enriched_blocks = []
     change = True
     while(change):
         change = False
         for branching in find_branchings(cdg, function_addrs):
-            if __enrich_rda_graph_implicit__(rda_graph, branching):
+            branching_enriched_blocks = __enrich_rda_graph_implicit__(rda_graph, branching)
+            if len(branching_enriched_blocks) > 0:
                 change = True
+                enriched_blocks.extend(branching_enriched_blocks)
+    return enriched_blocks
 
 def __enrich_rda_graph_implicit__(rda_graph, branching):
-    change = False
+    enriched_blocks = []
     for branch_ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, branching.branch_ins):
         if not branch_ins_rda_node:
             continue
@@ -24,14 +29,14 @@ def __enrich_rda_graph_implicit__(rda_graph, branching):
             continue
         branch_ins_rda_node.branching_sec_class = branch_ins_rda_node.sec_class
         for node in branching.subjects:
+            enriched_blocks.append((branch_ins_rda_node.sec_class, node))
             for ins in node.instruction_addrs:
                 for ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, ins):
                     if not ins_rda_node:
                         continue
                     rda_graph.add_edge(branch_ins_rda_node,ins_rda_node,type=1) #Implicit edge
                     util_rda.elevate_implicit(rda_graph, ins_rda_node, branch_ins_rda_node)
-        change = True
-    return change
+    return enriched_blocks
 
 def check_addr_high(rda_graph, addr):
     for n in util_rda.find_rda_graph_nodes(rda_graph, addr):
@@ -81,6 +86,22 @@ def find_branchings(cdg, function_addrs):
         if len(successors) < 1:
             continue
         yield Branching(n, successors)
+
+class BranchRecord:
+    def __init__(self, ins, depth, id):
+        self.ins = ins
+        self.depth = depth
+        self.id = id
+
+class BranchRecordPlugin(angr.SimStatePlugin):
+    NAME = 'branch_record_plugin'
+
+    def __init__(self, records):
+        self.records = copy.deepcopy(records)
+
+    @angr.SimStatePlugin.memo
+    def copy(self, memo):
+        return BranchRecordPlugin(self.records)
 
 class Branching:
     def __init__(self, node, subjects):

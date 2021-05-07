@@ -11,6 +11,7 @@ class InformationFlowAnalysis:
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
         self.subject_addrs = list(subject_addrs)
+        self.implicit_high_blocks = []
 
         self.start_node = None
         if isinstance(start, int):
@@ -151,7 +152,9 @@ class InformationFlowAnalysis:
 
     def __enrich_rda__(self):
         util_explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.subject_addrs)
-        util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
+        enriched_blocks = util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
+        implicit_high_blocks = list(map(lambda x: x[1], filter(lambda t: t[0] == 2, enriched_blocks)))
+        self.implicit_high_blocks = list(set(self.implicit_high_blocks + implicit_high_blocks))
 
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()
@@ -161,6 +164,23 @@ class InformationFlowAnalysis:
         self.s = loopSeer
         loopSeer.cut_succs.append(succ_state)
         #DO STUFF
+
+    def state_step_handler(self, base_state, stashes):
+        succs = stashes[None] #Effectively our active successor states
+        if len(succs) < 2:
+            return
+        is_high = False
+        for block in self.implicit_high_blocks:
+            for succ in succs:
+                if block.addr == succ.addr:
+                    is_high = True
+        if not is_high:
+            return
+        record = util_implicit.BranchRecord(base_state.addr, base_state.history.block_count + 1, self.__branching_id_counter)
+        self.__branching_id_counter += 1
+        for succ in succs:
+            print(hex(succ.addr))
+            succ.plugins[util_implicit.BranchRecordPlugin.NAME].records.append(record)
 
     def call_before_handler(self, state):
         sim_name = state.inspect.simprocedure_name
@@ -181,9 +201,11 @@ class InformationFlowAnalysis:
         if not plugin.callstate:
             return
         progress_obj = plugin.callfunction.progress_delegate(plugin.callstate, state)
+        call_addr = plugin.callstate.addr
+        call_high = util_implicit.check_addr_high(self.rda_graph, call_addr)
+        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count, call_high, call_addr)
         plugin.callfunction = None
         plugin.callstate = None
-        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count, )
         plugin.records.append(progress_record)
 
     def find_covert_leaks(self, bound=50, epsilon_threshold=0, record_procedures=None, progress_functions=None):
@@ -199,46 +221,66 @@ class InformationFlowAnalysis:
         start_state = self.state.copy()
         simgr = self.project.factory.simgr(start_state)
         self.__covert_simgr = simgr
+        self.__branching_id_counter = 0
         self.__progress_function_names = list(map(lambda f: f.name, progress_functions))
         self.__progress_function_map = {f.name : f for f in progress_functions}
 
         start_state.inspect.b('simprocedure', when=angr.BP_BEFORE, action=self.call_before_handler)
         start_state.inspect.b('exit', when=angr.BP_AFTER, action=self.call_after_handler)
         #Make bp for exiting high block (from CDG) and add instruction count to current TimingInterval of TimingPlugin
+        
+        start_state.register_plugin(util_implicit.BranchRecordPlugin.NAME, util_implicit.BranchRecordPlugin([]))
         start_state.register_plugin(util_progress.ProgressRecordPlugin.NAME, util_progress.ProgressRecordPlugin([],None,None))
         start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({}))
+        
         hook_addrs = []
         if record_procedures:
             for record_procedure in record_procedures:
                 proc_name = record_procedure[0]
-                proc_addr = util_information.get_sim_proc_addr(proj, proc_name)
+                proc_addr = util_information.get_sim_proc_addr(self.project, proc_name)
                 if proc_addr:
-                    proc = proj._sim_procedures[proc_addr]
-                    proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
+                    proc = self.project._sim_procedures[proc_addr]
+                    proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(self.project, proc_name)
                     for wrap_addr in proc_wrapper_funcs:
                         args = proc.cc.args if not record_procedure[1] else record_procedure[1]
-                        proj.hook(wrap_addr, lambda s: util_timing.procedure_hook(proj, s, proc, args))
+                        self.project.hook(wrap_addr, lambda s: util_timing.procedure_hook(self.project, s, proc, args))
                         hook_addrs.append(wrap_addr)
 
         simgr = self.project.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=bound, limit_concrete_loops=True, bound_reached=self.bound_reached_handler))
+        simgr.use_technique(StateStepBreakpoint(action=self.state_step_handler))
 
-        # while(True):
-        #     if len(simgr.active) == 0:
-        #         break
-        #     simgr.step()
-        simgr.run()
+        while(True):
+            if len(simgr.active) == 0:
+                break
+            simgr.step()
 
         for addr in hook_addrs:
-            proj.unhook(addr)
+            self.project.unhook(addr)
 
-        for spinning_state in simgr.spinning:
-            leak = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, simgr.deadended)
-            if leak:
-                return [leak]
+        #Termination
+        if hasattr(simgr, 'spinning'):
+            for spinning_state in simgr.spinning:
+                leak = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, simgr.deadended)
+                if leak:
+                    return [leak]
 
-        #
+        #Progress
 
-        #For each TimingInterval 
+        #Timing
 
         return []
+
+#Since a angr.BP_BEFORE breakpoint on fork doesn't work we do this manually...
+class StateStepBreakpoint(angr.exploration_techniques.ExplorationTechnique):
+    action = None #Should take a state and a stash dictionary
+
+    def __init__(self, action):
+        self.action = action
+        if not self.action:
+            raise Exception("Must set action!")
+
+    def step_state(self, simgr, state, **kwargs):
+        res = simgr.step_state(state, **kwargs)
+        self.action(state, res)
+        return res

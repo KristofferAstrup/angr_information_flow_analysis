@@ -16,10 +16,6 @@ import sys
 sys.path.append('../../../')
 from customutil import util_analysis, util_information, util_out, util_explicit, util_implicit, util_progress, util_termination
 
-class TestClass:
-    def __init__(self, ls):
-        self.ls = 
-
 def main():
     proj = angr.Project('samples/termination/non_termination/non_termination.out', load_options={'auto_load_libs':False})
 

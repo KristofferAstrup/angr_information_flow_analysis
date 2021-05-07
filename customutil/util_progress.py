@@ -82,11 +82,11 @@ class ProgressFunction:
         self.progress_delegate = progress_delegate
 
 class ProgressRecord:
-    def __init__(self, obj, depth, addr, sc):
+    def __init__(self, obj, depth, high, addr):
         self.obj = obj
         self.depth = depth
+        self.high = high
         self.addr = addr
-        self.sc = sc
 
 class ProgressRecordPlugin(angr.SimStatePlugin):
     NAME = 'progress_record_plugin'

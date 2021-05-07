@@ -13,9 +13,25 @@ import sys
 sys.path.append('../../../')
 from customutil import util_information, util_explicit, util_implicit, util_out, util_rda, util_analysis
 
+def aftyr(state):
+    print("awd")
+
+def before(state):
+    print("awd")
+
 def main():
     proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})
     state = proj.factory.entry_state()
+
+    simgr = proj.factory.simgr(state)
+    simgr.explore(find=0x401149)
+    state = simgr.found[0]
+    start_state.inspect.b('fork', when=angr.BP_BEFORE, action=self.fork_before_handler)
+    start_state.inspect.b('fork', when=angr.BP_AFTER, action=self.fork_after_handler)
+    simgr = proj.factory.simgr(state)
+    simgr.run()
+
+    return
 
     high_addrs = {0x401158, 0x401155}
     start_addr = 0x401149
