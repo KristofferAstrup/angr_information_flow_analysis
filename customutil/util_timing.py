@@ -9,6 +9,19 @@ import sys
 from customutil import util_out, util_information
 from networkx.drawing.nx_pydot import graphviz_layout
 
+def determine_timing_procedure_leak(term_states):
+    for term_state_a in term_states:
+        for term_state_b in term_states:
+            if term_state_a == term_state_b:
+                continue
+            for progress_instance in term_state_a.plugins[ProgressRecordPlugin.NAME].records:
+                if progress_instance in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+                    continue
+
+                return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
+
+def determine_timing_instruction_leak(term_states):
+
 def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
         record_procedures = [("sleep", None)]
@@ -57,17 +70,17 @@ def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0
 
     return leaks
 
-def procedure_hook(proj, state, procedure, arg_regs):
-    plugin = state.plugins[ProcedureRecordPlugin.NAME]
-    call = {}
-    for arg_reg in arg_regs:
-        offset, size = proj.arch.registers[arg_reg.reg_name]
-        reg = state.registers.load(offset, size)
-        val = state.solver.eval(reg)
-        call[arg_reg.reg_name] = val
-    key = procedure.display_name
-    record = ProcedureRecord(call, state.history.block_count)
-    plugin.map.setdefault(key, []).append(record)
+# def procedure_hook(proj, state):
+    # plugin = state.plugins[ProcedureRecordPlugin.NAME]
+    # call = {}
+    # for arg_reg in arg_regs:
+    #     offset, size = proj.arch.registers[arg_reg.reg_name]
+    #     reg = state.registers.load(offset, size)
+    #     val = state.solver.eval(reg)
+    #     call[arg_reg.reg_name] = val
+    # key = procedure.display_name
+    # record = ProcedureRecord(call, state.history.block_count)
+    # plugin.map.setdefault(key, []).append(record)
 
 def has_post_progress(proj, state):
     progress = state.posix.dumps(1)
@@ -123,14 +136,20 @@ def get_lineage_instruction_count(state):
             count += len(state.block(his.addr).instruction_addrs)
     return count
 
+def SleepTimingFunction():
+    return TimingFunction('sleep', SleepAccumulateDelegate)
+
+def SleepAccumulateDelegate(state):
+    return state.registers['rdi']
+
 class TimingFunction:
-    def __init__(self, name, quantifier_delegate):
+    def __init__(self, name, accumulate_delegate):
         self.name = name
-        self.quantifier_delegate = quantifier_delegate
+        self.accumulate_delegate = accumulate_delegate
 
 class TimingInterval:
-    def __init__(self, records, ins_count):
-        self.records = records
+    def __init__(self, acc, ins_count):
+        self.acc = acc
         self.ins_count = ins_count
 
 class ProcedureRecord:
@@ -141,13 +160,14 @@ class ProcedureRecord:
 class ProcedureRecordPlugin(angr.SimStatePlugin):
     NAME = 'procedure_record_plugin'
 
-    def __init__(self, map):
+    def __init__(self, map, temp_interval):
         super(ProcedureRecordPlugin, self).__init__()
+        self.temp_interval = copy.deepcopy(temp_interval)
         self.map = copy.deepcopy(map)
 
     @angr.SimStatePlugin.memo
     def copy(self, memo):
-        return ProcedureRecordPlugin(self.map)
+        return ProcedureRecordPlugin(self.map, self.temp_interval)
 
 class TimingProcedureLeakProof:
     def __init__(self, branching, procedure, state1, calls1, state2, calls2):

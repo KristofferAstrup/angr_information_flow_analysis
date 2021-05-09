@@ -179,17 +179,23 @@ class InformationFlowAnalysis:
         record = util_implicit.BranchRecord(base_state.addr, base_state.history.block_count + 1, self.__branching_id_counter)
         self.__branching_id_counter += 1
         for succ in succs:
-            print(hex(succ.addr))
-            succ.plugins[util_implicit.BranchRecordPlugin.NAME].records.append(record)
+            #print(hex(succ.addr))
+            succ.plugins[util_implicit.BranchRecordPlugin.NAME].records.insert(0, record)
 
     def call_before_handler(self, state):
         sim_name = state.inspect.simprocedure_name
-        if not sim_name in self.__progress_function_names:
-            return
+        if sim_name in self.__progress_function_names:
+            progress_function_call(self, state, sim_name)
+        if sim_name in self.__timing_function_names:
+            
+    def progress_function_call(self, state, name):
         plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
-        plugin.callfunction = self.__progress_function_map[sim_name]
+        plugin.callfunction = self.__progress_function_map[name]
         plugin.callstate = state
-        pass
+
+    def timing_function_call(self, state, name):
+        plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
+        plugin.temp_interval.acc += self.__timing_function_map[name].accumulate_delegate(state)
 
     def call_after_handler(self, state):
         plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
@@ -207,10 +213,15 @@ class InformationFlowAnalysis:
         plugin.callfunction = None
         plugin.callstate = None
         plugin.records.append(progress_record)
+        timing_plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
+        if timing_plugin.temp_interval.ins_count > 0 or timing_plugin.temp_interval.acc > 0:
+            #SET INS_COUNT ON TEMP_INTERVAL
+            timing_plugin.map[progress_record] = timing_plugin.temp_interval
+            timing_plugin.temp_interval = util_timing.TimingInterval(0,0)
 
-    def find_covert_leaks(self, bound=50, epsilon_threshold=0, record_procedures=None, progress_functions=None):
-        if not record_procedures:
-            record_procedures = [("sleep", None)]
+    def find_covert_leaks(self, bound=50, epsilon_threshold=0, timing_functions=None, progress_functions=None):
+        if not timing_functions:
+            timing_functions = [util_timing.SleepTimingFunction()]
             
         if not progress_functions:
             progress_functions = [
@@ -224,6 +235,8 @@ class InformationFlowAnalysis:
         self.__branching_id_counter = 0
         self.__progress_function_names = list(map(lambda f: f.name, progress_functions))
         self.__progress_function_map = {f.name : f for f in progress_functions}
+        self.__timing_function_names = list(map(lambda f: f.name, timing_functions))
+        self.__timing_function_map = {f.name : f for f in timing_functions}
 
         start_state.inspect.b('simprocedure', when=angr.BP_BEFORE, action=self.call_before_handler)
         start_state.inspect.b('exit', when=angr.BP_AFTER, action=self.call_after_handler)
@@ -231,20 +244,20 @@ class InformationFlowAnalysis:
         
         start_state.register_plugin(util_implicit.BranchRecordPlugin.NAME, util_implicit.BranchRecordPlugin([]))
         start_state.register_plugin(util_progress.ProgressRecordPlugin.NAME, util_progress.ProgressRecordPlugin([],None,None))
-        start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({}))
+        start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({},util_timing.TimingInterval(0,0)))
         
-        hook_addrs = []
-        if record_procedures:
-            for record_procedure in record_procedures:
-                proc_name = record_procedure[0]
-                proc_addr = util_information.get_sim_proc_addr(self.project, proc_name)
-                if proc_addr:
-                    proc = self.project._sim_procedures[proc_addr]
-                    proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(self.project, proc_name)
-                    for wrap_addr in proc_wrapper_funcs:
-                        args = proc.cc.args if not record_procedure[1] else record_procedure[1]
-                        self.project.hook(wrap_addr, lambda s: util_timing.procedure_hook(self.project, s, proc, args))
-                        hook_addrs.append(wrap_addr)
+        # hook_addrs = []
+        # if timing_record_procedures:
+        #     for record_procedure in timing_record_procedures:
+        #         proc_name = record_procedure[0]
+        #         proc_addr = util_information.get_sim_proc_addr(self.project, proc_name)
+        #         if proc_addr:
+        #             proc = self.project._sim_procedures[proc_addr]
+        #             proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(self.project, proc_name)
+        #             for wrap_addr in proc_wrapper_funcs:
+        #                 args = proc.cc.args if not record_procedure[1] else record_procedure[1]
+        #                 self.project.hook(wrap_addr, lambda s: timing_procedure_call(self, s, timing_record_procedures))
+        #                 hook_addrs.append(wrap_addr)
 
         simgr = self.project.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=bound, limit_concrete_loops=True, bound_reached=self.bound_reached_handler))
@@ -259,15 +272,25 @@ class InformationFlowAnalysis:
             self.project.unhook(addr)
 
         #Termination
-        if hasattr(simgr, 'spinning'):
-            for spinning_state in simgr.spinning:
-                leak = util_termination.get_termination_leak(self.rda_graph, self.cfg, self.high_addrs, spinning_state, simgr.deadended)
-                if leak:
-                    return [leak]
+        spinning_states = simgr.spinning if hasattr(simgr, 'spinning') else []
+        for spinning_state in spinning_states:
+            leak = util_termination.determine_termination_leak(spinning_state, simgr.deadended)
+            if leak:
+                return [leak]
 
         #Progress
+        progress_leak = util_progress.determine_progress_leak(simgr.deadended)
+        if progress_leak:
+            return [progress_leak]
 
         #Timing
+        timing_procedure_leak = util_timing.determine_timing_procedure_leak(simgr.deadended)
+        if timing_procedure_leak:
+            return [timing_procedure_leak]
+
+        timing_instruction_leak = util_timing.determine_timing_instruction_leak(simgr.deadended)
+        if timing_instruction_leak:
+            return [timing_instruction_leak]
 
         return []
 

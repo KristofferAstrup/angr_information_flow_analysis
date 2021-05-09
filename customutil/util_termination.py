@@ -6,6 +6,26 @@ import networkx as nx
 import pydot
 from customutil import util_information, util_out, util_explicit, util_implicit, util_progress
 
+def determine_termination_leak(nonterm_state, term_states):
+    high_nonterm_loop = False
+    for branch_instance in nonterm_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+        if nonterm_state.addr == branch_instance.block_addr:
+            high_nonterm_loop = True
+    if not high_nonterm_loop:
+        return None
+    for term_state in term_states:
+        for branch_instance in nonterm_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+            if not branch_instance in term_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                continue
+            for progress_instance in term_state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+                if progress_instance.depth < branch_instance.depth:
+                    continue
+                if progress_instance in nonterm_state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+                    continue
+                non_term_loop = get_nonterm_loop(nonterm_state)
+                return TerminationLeakProof(non_term_loop, nonterm_state, term_state, progress_instance)
+    return None
+
 def get_termination_leak(rda_graph, cfg, high_addrs, spinning_state, progress_states): 
     #Progress_states are simply states that are not spinning and may be used as evidence for a termination leak
     infinite_loop_history_begin, infinite_loop = get_infinite_loop_begin_of_spinning(spinning_state)
@@ -43,6 +63,12 @@ def accumulate_loop_path_block_addrs(loop, addrs=[], blocknode=None):
     for succ in blocknode.successors:
         if succ in loop.body_nodes and not succ.addr in addrs:
             accumulate_loop_path_block_addrs(succ, addrs, succ)
+
+def get_nonterm_loop(spinning_state):
+    for loop, addrs in reversed(spinning_state.loop_data.current_loop):
+        if loop.entry.addr == spinning_state.addr:
+            return loop
+    return None
 
 def get_infinite_loop_begin_of_spinning(spinning, min_iters=1):
     infinite_loop_history_begin = None
@@ -86,7 +112,7 @@ class TerminationLeakProof:
         self.progressdiff = progressdiff
     
     def __repr__(self):
-        return "<TerminationLeakProof @ loop: " + str(self.loop) + ", loopstate : " + str(self.spinningstate) + ", progressstate: " + str(self.progressstate) + ", progressdiff" + str(self.progressdiff) + ">"
+        return "<TerminationLeakProof @ loop: " + str(self.loop) + ", loopstate : " + str(self.spinningstate) + ", progressstate: " + str(self.progressstate) + ", progressdiff: " + str(self.progressdiff) + ">"
 
  # cfg = util_information.cfg_emul(proj, simgr, state)
     # start_node = util_information.find_cfg_node(cfg, 0x401149)

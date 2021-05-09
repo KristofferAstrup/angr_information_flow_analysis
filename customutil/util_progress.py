@@ -6,8 +6,24 @@ import networkx as nx
 import pydot
 import copy
 import sys
-from customutil import util_out, util_information
+from customutil import util_out, util_information, util_implicit
 from networkx.drawing.nx_pydot import graphviz_layout
+
+def determine_progress_leak(term_states):
+    for term_state_a in term_states:
+        for term_state_b in term_states:
+            if term_state_a == term_state_b:
+                continue
+            for branch_instance in term_state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in term_state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                    continue
+                for progress_instance in term_state_a.plugins[ProgressRecordPlugin.NAME].records:
+                    if progress_instance.depth < branch_instance.depth:
+                        continue
+                    if progress_instance in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+                        continue
+                    return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
+    return None
 
 #Returns ProgressLeakProof if a observable diff exists through branching
 #TODO: Merging + pruning of states accumulated from loop iterations
@@ -26,7 +42,7 @@ def test_observer_diff(proj, cfg, state, branching, bound=10):
         simgr.run()
         diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
         if diff:
-            return ProgressLeakProof(branching, diff[0], diff[1])
+            return ProgressLeakProof()
     return None
 
 def test_observer_diff_simgr(states):
@@ -88,6 +104,12 @@ class ProgressRecord:
         self.high = high
         self.addr = addr
 
+    def __eq__(self, other):
+        return self.obj == other.obj and self.depth == other.depth and self.high == other.high and self.addr == other.addr
+
+    def __repr__(self):
+        return "<ProgressRecord (" + str(self.obj) + ") @ " + str(hex(self.addr)) + ">"
+
 class ProgressRecordPlugin(angr.SimStatePlugin):
     NAME = 'progress_record_plugin'
 
@@ -108,4 +130,4 @@ class ProgressLeakProof:
         self.state2 = state2
     
     def __repr__(self):
-        return "<ProgressLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
+        return "<ProgressLeakProof @ branching: " + str(hex(self.branching.block_addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"

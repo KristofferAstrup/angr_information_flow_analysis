@@ -88,10 +88,12 @@ def find_branchings(cdg, function_addrs):
         yield Branching(n, successors)
 
 class BranchRecord:
-    def __init__(self, ins, depth, id):
-        self.ins = ins
+    def __init__(self, block_addr, depth, id):
+        self.block_addr = block_addr
         self.depth = depth
         self.id = id
+    def __eq__(self, other):
+        return self.id == other.id
 
 class BranchRecordPlugin(angr.SimStatePlugin):
     NAME = 'branch_record_plugin'
