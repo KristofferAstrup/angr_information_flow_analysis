@@ -6,7 +6,7 @@ import networkx as nx
 import pydot
 import copy
 import sys
-from customutil import util_out, util_information
+from customutil import util_out, util_information, util_progress
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def determine_timing_procedure_leak(term_states):
@@ -14,13 +14,15 @@ def determine_timing_procedure_leak(term_states):
         for term_state_b in term_states:
             if term_state_a == term_state_b:
                 continue
-            for progress_instance in term_state_a.plugins[ProgressRecordPlugin.NAME].records:
-                if progress_instance in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+            for progress_instance in term_state_a.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+                if progress_instance in term_state_b.plugins[util_progress.ProgressRecordPlugin.NAME].records:
                     continue
-
+                #Check for similar progress > check for diff in acc
                 return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
 
 def determine_timing_instruction_leak(term_states):
+    #Similar to above > check for diff in ins_count
+    pass
 
 def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
@@ -135,6 +137,18 @@ def get_lineage_instruction_count(state):
         if his.addr:
             count += len(state.block(his.addr).instruction_addrs)
     return count
+
+def get_history_high_instruction_count(state, termination_depth, high_block_map):
+    high_ins_count = 0
+    his = state.history
+    print(list(map(lambda h: h.addr, state.history.lineage)))
+    while his.block_count > termination_depth:
+        if his.addr in high_block_map:
+            high_ins_count += len(high_block_map[his.addr].instruction_addrs)
+        if not his.parent:
+            break
+        his = his.parent
+    return high_ins_count
 
 def SleepTimingFunction():
     return TimingFunction('sleep', SleepAccumulateDelegate)

@@ -18,9 +18,16 @@ def determine_progress_leak(term_states):
                 if not branch_instance in term_state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
                     continue
                 for progress_instance in term_state_a.plugins[ProgressRecordPlugin.NAME].records:
+                    if not progress_instance.high:
+                        continue
                     if progress_instance.depth < branch_instance.depth:
                         continue
-                    if progress_instance in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+                    found = False
+                    for foreign_progress in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+                        if foreign_progress.high and progress_instance.obj == foreign_progress.obj:
+                            found = True
+                            break
+                    if found:
                         continue
                     return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
     return None
@@ -105,7 +112,7 @@ class ProgressRecord:
         self.addr = addr
 
     def __eq__(self, other):
-        return self.obj == other.obj and self.depth == other.depth and self.high == other.high and self.addr == other.addr
+        return self.obj == other.obj
 
     def __repr__(self):
         return "<ProgressRecord (" + str(self.obj) + ") @ " + str(hex(self.addr)) + ">"

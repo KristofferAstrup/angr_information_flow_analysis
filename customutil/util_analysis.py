@@ -155,6 +155,7 @@ class InformationFlowAnalysis:
         enriched_blocks = util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
         implicit_high_blocks = list(map(lambda x: x[1], filter(lambda t: t[0] == 2, enriched_blocks)))
         self.implicit_high_blocks = list(set(self.implicit_high_blocks + implicit_high_blocks))
+        self.implicit_high_block_map = {b.addr : b for b in implicit_high_blocks}
 
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()
@@ -185,8 +186,9 @@ class InformationFlowAnalysis:
     def call_before_handler(self, state):
         sim_name = state.inspect.simprocedure_name
         if sim_name in self.__progress_function_names:
-            progress_function_call(self, state, sim_name)
+            self.progress_function_call(state, sim_name)
         if sim_name in self.__timing_function_names:
+            self.timing_function_call(state, sim_name)
             
     def progress_function_call(self, state, name):
         plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
@@ -194,6 +196,9 @@ class InformationFlowAnalysis:
         plugin.callstate = state
 
     def timing_function_call(self, state, name):
+        call_high = util_implicit.check_addr_high(self.rda_graph, state.addr)
+        if not call_high:
+            return
         plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
         plugin.temp_interval.acc += self.__timing_function_map[name].accumulate_delegate(state)
 
@@ -206,6 +211,7 @@ class InformationFlowAnalysis:
         sim_name = state.inspect.simprocedure_name
         if not plugin.callstate:
             return
+        prev_progress_depth = plugin.records[len(plugin.records)-1].depth if len(plugin.records) > 0 else -1
         progress_obj = plugin.callfunction.progress_delegate(plugin.callstate, state)
         call_addr = plugin.callstate.addr
         call_high = util_implicit.check_addr_high(self.rda_graph, call_addr)
@@ -214,10 +220,9 @@ class InformationFlowAnalysis:
         plugin.callstate = None
         plugin.records.append(progress_record)
         timing_plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
-        if timing_plugin.temp_interval.ins_count > 0 or timing_plugin.temp_interval.acc > 0:
-            #SET INS_COUNT ON TEMP_INTERVAL
-            timing_plugin.map[progress_record] = timing_plugin.temp_interval
-            timing_plugin.temp_interval = util_timing.TimingInterval(0,0)
+        timing_plugin.temp_interval.ins_count = util_timing.get_history_high_instruction_count(state, prev_progress_depth, self.implicit_high_block_map)
+        timing_plugin.map[len(plugin.records)-1] = timing_plugin.temp_interval
+        timing_plugin.temp_interval = util_timing.TimingInterval(0,0)
 
     def find_covert_leaks(self, bound=50, epsilon_threshold=0, timing_functions=None, progress_functions=None):
         if not timing_functions:
@@ -268,8 +273,8 @@ class InformationFlowAnalysis:
                 break
             simgr.step()
 
-        for addr in hook_addrs:
-            self.project.unhook(addr)
+        # for addr in hook_addrs:
+        #     self.project.unhook(addr)
 
         #Termination
         spinning_states = simgr.spinning if hasattr(simgr, 'spinning') else []
