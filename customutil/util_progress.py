@@ -9,27 +9,27 @@ import sys
 from customutil import util_out, util_information, util_implicit
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def determine_progress_leak(term_states):
-    for term_state_a in term_states:
-        for term_state_b in term_states:
-            if term_state_a == term_state_b:
+def determine_progress_leak(states):
+    for state_a in states:
+        for state_b in states:
+            if state_a == state_b:
                 continue
-            for branch_instance in term_state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
-                if not branch_instance in term_state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
                     continue
-                for progress_instance in term_state_a.plugins[ProgressRecordPlugin.NAME].records:
+                for progress_instance in state_a.plugins[ProgressRecordPlugin.NAME].records:
                     if not progress_instance.high:
                         continue
                     if progress_instance.depth < branch_instance.depth:
                         continue
                     found = False
-                    for foreign_progress in term_state_b.plugins[ProgressRecordPlugin.NAME].records:
+                    for foreign_progress in state_b.plugins[ProgressRecordPlugin.NAME].records:
                         if foreign_progress.high and progress_instance.obj == foreign_progress.obj:
                             found = True
                             break
                     if found:
                         continue
-                    return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
+                    return ProgressLeakProof(branch_instance, state_a, state_b, progress_instance)
     return None
 
 #Returns ProgressLeakProof if a observable diff exists through branching
@@ -105,11 +105,12 @@ class ProgressFunction:
         self.progress_delegate = progress_delegate
 
 class ProgressRecord:
-    def __init__(self, obj, depth, high, addr):
+    def __init__(self, obj, depth, high, addr, index):
         self.obj = obj
         self.depth = depth
         self.high = high
         self.addr = addr
+        self.index = index
 
     def __eq__(self, other):
         return self.obj == other.obj
@@ -131,10 +132,11 @@ class ProgressRecordPlugin(angr.SimStatePlugin):
         return ProgressRecordPlugin(self.records, self.callfunction, self.callstate)
 
 class ProgressLeakProof:
-    def __init__(self, branching, state1, state2):
+    def __init__(self, branching, state1, state2, progress_diff):
         self.branching = branching
         self.state1 = state1
         self.state2 = state2
+        self.progress_diff = progress_diff
     
     def __repr__(self):
-        return "<ProgressLeakProof @ branching: " + str(hex(self.branching.block_addr)) + ", state1: " + str(self.state1.posix.dumps(1)) + ", state2: " + str(self.state2.posix.dumps(1)) + ">"
+        return "<ProgressLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", from progress diff: " + str(progress_diff) + ">"

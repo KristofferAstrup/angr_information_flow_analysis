@@ -6,23 +6,53 @@ import networkx as nx
 import pydot
 import copy
 import sys
-from customutil import util_out, util_information, util_progress
+from customutil import util_implicit, util_information, util_progress
 from networkx.drawing.nx_pydot import graphviz_layout
 
-def determine_timing_procedure_leak(term_states):
-    for term_state_a in term_states:
-        for term_state_b in term_states:
-            if term_state_a == term_state_b:
+def determine_timing_procedure_leak(states):
+    for state_a in states:
+        for state_b in states:
+            if state_a == state_b:
                 continue
-            for progress_instance in term_state_a.plugins[util_progress.ProgressRecordPlugin.NAME].records:
-                if progress_instance in term_state_b.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
                     continue
-                #Check for similar progress > check for diff in acc
-                return ProgressLeakProof(branch_instance, term_state_a, term_state_b)
+                imm_progress_instance_a = immediate_progress(state_a, branch_instance)
+                if not imm_progress_instance_a:
+                    continue
+                imm_progress_instance_b = immediate_progress(state_a, branch_instance)
+                if not imm_progress_instance_b:
+                    continue
+                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_a.index]
+                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_b.index]
+                if abs(timing_interval_a.acc - timing_interval_b.acc) > 0:
+                    return TimingProcedureLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
 
-def determine_timing_instruction_leak(term_states):
-    #Similar to above > check for diff in ins_count
-    pass
+def determine_timing_instruction_leak(states, ins_count_threshold):
+    for state_a in states:
+        for state_b in states:
+            if state_a == state_b:
+                continue
+            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+                    continue
+                imm_progress_instance_a = immediate_progress(state_a, branch_instance)
+                if not imm_progress_instance_a:
+                    continue
+                imm_progress_instance_b = immediate_progress(state_a, branch_instance)
+                if not imm_progress_instance_b:
+                    continue
+                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_a.index]
+                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_b.index]
+                if abs(timing_interval_a.ins_count - timing_interval_b.ins_count) > ins_count_threshold:
+                    return TimingEpsilonLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
+
+def immediate_progress(state, branching):
+    for prog in state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+        if prog.depth < branching.depth:
+            continue
+        return prog
+    return None
 
 def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0, record_procedures=None):
     if not record_procedures:
@@ -141,7 +171,7 @@ def get_lineage_instruction_count(state):
 def get_history_high_instruction_count(state, termination_depth, high_block_map):
     high_ins_count = 0
     his = state.history
-    print(list(map(lambda h: h.addr, state.history.lineage)))
+    #print(list(map(lambda h: h.addr, state.history.lineage)))
     while his.block_count > termination_depth:
         if his.addr in high_block_map:
             high_ins_count += len(high_block_map[his.addr].instruction_addrs)
@@ -154,7 +184,8 @@ def SleepTimingFunction():
     return TimingFunction('sleep', SleepAccumulateDelegate)
 
 def SleepAccumulateDelegate(state):
-    return state.registers['rdi']
+    val = state.solver.eval(state.regs.rdi)
+    return val
 
 class TimingFunction:
     def __init__(self, name, accumulate_delegate):
@@ -184,24 +215,23 @@ class ProcedureRecordPlugin(angr.SimStatePlugin):
         return ProcedureRecordPlugin(self.map, self.temp_interval)
 
 class TimingProcedureLeakProof:
-    def __init__(self, branching, procedure, state1, calls1, state2, calls2):
+    def __init__(self, branching, state1, state2, interval1, interval2):
         self.branching = branching
-        self.procedure = procedure
         self.state1 = state1
-        self.calls1 = calls1
         self.state2 = state2
-        self.calls2 = calls2
+        self.interval1 = interval1
+        self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingProcedureLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", sim_proc: " + self.procedure.display_name + ", calls_left: " + str(self.calls1) + ", calls_right: " + str(self.calls2) + ">"
+        return "<TimingProcedureLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", acc1: " + str(self.interval1.acc) + ", acc2: " + str(self.interval2.acc) + ">"
 
 class TimingEpsilonLeakProof:
-    def __init__(self, branching, state1, ins_count1, state2, ins_count2):
+    def __init__(self, branching, state1, state2, interval1, interval2):
         self.branching = branching
         self.state1 = state1
-        self.ins_count1 = ins_count1
         self.state2 = state2
-        self.ins_count2 = ins_count2
+        self.interval1 = interval1
+        self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingEpsilonLeakProof @ branching: " + str(hex(self.branching.node.block.addr)) + ", eps: " + str(abs(self.ins_count2 - self.ins_count1)) + ">"
+        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + " eps: " + str(abs(self.interval1.ins_count - self.interval2.ins_count)) + ">"
