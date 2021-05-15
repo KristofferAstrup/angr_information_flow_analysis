@@ -105,14 +105,14 @@ def get_closest_common_ancestor(his1, his2):
 
 class TerminationLeakProof:
     #TODO: Make better loop repr with hexed addrs within loops
-    def __init__(self, loop, spinningstate, progressstate, progressdiff):
+    def __init__(self, loop, spinning_state, progress_state, progress_diff):
         self.loop = loop,
-        self.spinningstate = spinningstate
-        self.progressstate = progressstate
-        self.progressdiff = progressdiff
+        self.spinning_state = spinning_state
+        self.progress_state = progress_state
+        self.progress_diff = progress_diff
     
     def __repr__(self):
-        return "<TerminationLeakProof @ loop: " + str(self.loop) + ", loopstate : " + str(self.spinningstate) + ", progressstate: " + str(self.progressstate) + ", progressdiff: " + str(self.progressdiff) + ">"
+        return "<TerminationLeakProof @ loop: " + str(self.loop) + ", loop state : " + str(self.spinning_state) + ", progress state: " + str(self.progress_state) + ", progress diff: " + str(self.progress_diff) + ">"
 
  # cfg = util_information.cfg_emul(proj, simgr, state)
     # start_node = util_information.find_cfg_node(cfg, 0x401149)
