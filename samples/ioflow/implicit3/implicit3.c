@@ -1,21 +1,19 @@
 #include <stdio.h>
 
-int printer(int argc, char** argv)
+int printer(int argc)
 {
-    char* str = "first";
+    char* str = "one";
     if(argc == 2)
     {
-        str = "second";
+        str = "two";
     }
     else if(argc >= 3)
     {
-        str = "third or more";
+        str = "three or more";
     }
     printf("%s\n", str);
 }
 
 int main(int argc, char** argv) {
-    printf("%s\n", "Begin");
-    printer(argc, argv);
-    printf("%s\n", "End");
+    printer(argc);
 }
