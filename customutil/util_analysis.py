@@ -5,7 +5,7 @@ class InformationFlowAnalysis:
     def __init__(self, proj, high_addrs, state=None, start=None, progress_args=None, termination_args=None, timing_args=None):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
-        self.simgr = proj.factory.simgr(self.state)#, hierarchy=angr.state_hierarchy.StateHierarchy())
+        self.simgr = proj.factory.simgr(self.state)
         self.cfg = util_information.cfg_emul(self.project, self.simgr, self.state)
         self.ddg = proj.analyses.DDG(cfg = self.cfg)
         self.cdg = proj.analyses.CDG(cfg = self.cfg)

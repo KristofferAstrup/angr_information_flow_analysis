@@ -37,9 +37,7 @@ def main():
     start_addr = 0x401149
 
     ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
-    subject_addr = ifa.find_and_add_subject_addrs("puts")
-    ifa.draw_everything()
-    ifa.find_all_leaks()
+    ifa.analyze()
     return
 
 if __name__ == "__main__":
