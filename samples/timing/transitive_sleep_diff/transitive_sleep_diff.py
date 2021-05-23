@@ -2,7 +2,7 @@ import angr
 import claripy
 import sys
 sys.path.append('../../../')
-from customutil import util_analysis
+from information_flow_analysis import analysis
 
 def main():
     proj = angr.Project('transitive_sleep_diff.out', load_options={'auto_load_libs':False})
@@ -14,7 +14,7 @@ def main():
         state.add_constraints(byte >= '\x21') # '!'
         state.add_constraints(byte <= '\x7e') # '~'
    
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,high_addrs=[0x401175, 0x401178])
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,high_addrs=[0x401175, 0x401178])
     ifa.find_and_add_subject_addrs("puts")
     for leak in ifa.find_timing_leaks():
         print(leak)

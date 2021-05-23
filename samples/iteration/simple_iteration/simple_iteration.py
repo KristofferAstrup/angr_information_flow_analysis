@@ -16,7 +16,7 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress
+from information_flow_analysis import information, out, explicit, implicit, progress
 
 def main():
     proj = angr.Project('simple_iteration.out', load_options={'auto_load_libs':False})

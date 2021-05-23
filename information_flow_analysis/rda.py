@@ -3,7 +3,7 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import angr.analyses.reaching_definitions.dep_graph as dep_graph
 import networkx as nx
-from customutil import util_information
+from information_flow_analysis import information
 
 class DefinitionDecorator(angr.knowledge_plugins.key_definitions.definition.Definition):
     def __init__(self, atom, codeloc, data, dummy, tags):
@@ -74,7 +74,7 @@ def wrap_rda(rda):
 #Create new super graph containing all rda graphs
 def get_super_dep_graph_with_linking(proj, cfg, start_node, func_addrs=None):
     if not func_addrs:
-        func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
+        func_addrs = information.get_unique_reachable_function_addresses(cfg, start_node)
     rda_graph = wrap_rda(get_super_rda(proj, func_addrs))
     link_externals_to_earliest_definition(rda_graph, cfg, [start_node])
     return rda_graph
@@ -114,7 +114,7 @@ def link_externals_to_earliest_definition(rda_graph, cfg, cfg_end_nodes):
     externals = get_externals(rda_graph)
     for external in externals:
         for nn in list(nx.all_neighbors(rda_graph, external)):
-            cfg_node = util_information.find_cfg_node(cfg, nn.codeloc.block_addr)
+            cfg_node = information.find_cfg_node(cfg, nn.codeloc.block_addr)
             if not cfg_node:
                 continue
             matches = find_earliest_matching_definition(external, nn, leafs, cfg_end_nodes, cfg_node)

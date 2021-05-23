@@ -1,12 +1,12 @@
 import angr
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_timing, util_rda
+from information_flow_analysis import information, out, explicit, implicit, progress, termination, timing, rda
 
 class InformationFlowAnalysis:
     def __init__(self, proj, high_addrs, state=None, start=None, progress_args=None, termination_args=None, timing_args=None):
         self.project = proj
         self.state = state if state else proj.factory.entry_state()
         self.simgr = proj.factory.simgr(self.state)
-        self.cfg = util_information.cfg_emul(self.project, self.simgr, self.state)
+        self.cfg = information.cfg_emul(self.project, self.simgr, self.state)
         self.ddg = proj.analyses.DDG(cfg = self.cfg)
         self.cdg = proj.analyses.CDG(cfg = self.cfg)
         self.high_addrs = high_addrs
@@ -16,12 +16,12 @@ class InformationFlowAnalysis:
         if isinstance(start, int):
             self.start_node = self.cfg.model.get_any_node(addr=start)
         if isinstance(start, str):
-            self.start_node = util_information.find_cfg_function_node(self.cfg, start)
+            self.start_node = information.find_cfg_function_node(self.cfg, start)
         if not self.start_node:
             self.start_node = self.cfg.model.get_any_node(addr=self.state.addr)
 
-        self.function_addrs = util_information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
-        self.rda_graph = util_rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
+        self.function_addrs = information.get_unique_reachable_function_addresses(self.cfg, self.start_node)
+        self.rda_graph = rda.get_super_dep_graph_with_linking(self.project, self.cfg, self.start_node, func_addrs=self.function_addrs)
         self.post_dom_tree = self.cdg.get_post_dominators()
 
         self.set_termination_args(termination_args)
@@ -34,9 +34,9 @@ class InformationFlowAnalysis:
         self.state = self.simgr.found[0]
         self.__enrich_rda__()
 
-    def draw_everything(self):  
+    def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()
-        util_out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)
+        out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)
 
     def set_termination_args(self, termination_args):
         self.__termination_args = termination_args if termination_args else self.__default_termination_args()
@@ -57,7 +57,7 @@ class InformationFlowAnalysis:
             return
         self.__enrich_rda__()
         flows = []
-        for explicit_flow in util_explicit.find_explicit(rda_graph=self.rda_graph, subject_addrs=subject_addrs):
+        for explicit_flow in explicit.find_explicit(rda_graph=self.rda_graph, subject_addrs=subject_addrs):
             flows.append(explicit_flow)
         return flows
 
@@ -68,7 +68,7 @@ class InformationFlowAnalysis:
             return
         self.__enrich_rda__()
         flows = []
-        for implicit_flow in util_implicit.find_implicit(rda_graph=self.rda_graph, subject_addrs=subject_addrs):
+        for implicit_flow in implicit.find_implicit(rda_graph=self.rda_graph, subject_addrs=subject_addrs):
             flows.append(implicit_flow)
         return flows
 
@@ -117,7 +117,7 @@ class InformationFlowAnalysis:
             if verbose:
                 print("No subject addresses found, skipping implicit/explicit")
 
-        return find_covert_leaks(self, progress_args, termination_args, timing_args, verbose)
+        return self.find_covert_leaks(progress_args=progress_args, termination_args=termination_args, timing_args=timing_args, verbose=verbose)
 
     #---Precedence---
     #   Termination (concolic)
@@ -142,9 +142,9 @@ class InformationFlowAnalysis:
         start_state.inspect.b('exit', when=angr.BP_AFTER, action=self.__call_after_handler)
         #Make bp for exiting high block (from CDG) and add instruction count to current TimingInterval of TimingPlugin
         
-        start_state.register_plugin(util_implicit.BranchRecordPlugin.NAME, util_implicit.BranchRecordPlugin([]))
-        start_state.register_plugin(util_progress.ProgressRecordPlugin.NAME, util_progress.ProgressRecordPlugin([],None,None))
-        start_state.register_plugin(util_timing.ProcedureRecordPlugin.NAME, util_timing.ProcedureRecordPlugin({},util_timing.TimingInterval(0,0)))
+        start_state.register_plugin(implicit.BranchRecordPlugin.NAME, implicit.BranchRecordPlugin([]))
+        start_state.register_plugin(progress.ProgressRecordPlugin.NAME, progress.ProgressRecordPlugin([],None,None))
+        start_state.register_plugin(timing.ProcedureRecordPlugin.NAME, timing.ProcedureRecordPlugin({},timing.TimingInterval(0,0)))
         
         simgr = self.project.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=termination_args.bound, limit_concrete_loops=True, bound_reached=self.__bound_reached_handler))
@@ -161,7 +161,7 @@ class InformationFlowAnalysis:
             if verbose:
                 print("Found " + str(len(spinning_states)) + " approximately non-terminating states")
             for spinning_state in spinning_states:
-                leak = util_termination.determine_termination_leak(spinning_state, simgr.deadended)
+                leak = termination.determine_termination_leak(spinning_state, simgr.deadended)
                 if leak:
                     if verbose:
                         print("Found termination leak:")
@@ -172,11 +172,11 @@ class InformationFlowAnalysis:
         else:
             if verbose:
                 print("Skipping excluded termination leaks")
-
+        
         states = simgr.deadended + spinning_states
         #Progress
         if progress_args.included:
-            progress_leak = util_progress.determine_progress_leak(states)
+            progress_leak = progress.determine_progress_leak(states)
             if progress_leak:
                 if verbose:
                     print("Found progress leak:")
@@ -190,7 +190,7 @@ class InformationFlowAnalysis:
 
         #Timing
         if timing_args.included:
-            timing_procedure_leak = util_timing.determine_timing_procedure_leak(states)
+            timing_procedure_leak = timing.determine_timing_procedure_leak(states)
             if timing_procedure_leak:
                 if verbose:
                     print("Found timing procedure leak:")
@@ -199,7 +199,7 @@ class InformationFlowAnalysis:
             if verbose:
                 print("Found no timing procedure leaks")
 
-            timing_instruction_leak = util_timing.determine_timing_instruction_leak(states, timing_args.epsilon)
+            timing_instruction_leak = timing.determine_timing_instruction_leak(states, timing_args.epsilon)
             if timing_instruction_leak:
                 if verbose:
                     print("Found timing instruction leak:")
@@ -216,8 +216,8 @@ class InformationFlowAnalysis:
         return []
 
     def __enrich_rda__(self):
-        util_explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.__subject_addrs)
-        enriched_blocks = util_implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
+        explicit.enrich_rda_graph_explicit(self.rda_graph, self.high_addrs, self.__subject_addrs)
+        enriched_blocks = implicit.enrich_rda_graph_implicit(self.rda_graph, self.cdg, self.function_addrs)
         implicit_high_blocks = list(map(lambda x: x[1], filter(lambda t: t[0] == 2, enriched_blocks)))
         self.implicit_high_blocks = list(set(self.implicit_high_blocks + implicit_high_blocks))
         self.implicit_high_block_map = {b.addr : b for b in implicit_high_blocks}
@@ -237,10 +237,10 @@ class InformationFlowAnalysis:
                     is_high = True
         if not is_high:
             return
-        record = util_implicit.BranchRecord(base_state.addr, base_state.history.block_count + 1, self.__branching_id_counter)
+        record = implicit.BranchRecord(base_state.addr, base_state.history.block_count + 1, self.__branching_id_counter)
         self.__branching_id_counter += 1
         for succ in succs:
-            succ.plugins[util_implicit.BranchRecordPlugin.NAME].records.insert(0, record)
+            succ.plugins[implicit.BranchRecordPlugin.NAME].records.insert(0, record)
 
     def __call_before_handler(self, state):
         sim_name = state.inspect.simprocedure_name
@@ -250,66 +250,84 @@ class InformationFlowAnalysis:
             self.__timing_function_call(state, sim_name)
             
     def __progress_function_call(self, state, name):
-        plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
+        plugin = state.plugins[progress.ProgressRecordPlugin.NAME]
         plugin.callfunction = self.__progress_function_map[name]
-        plugin.callstate = state
+        plugin.callstate = state.copy()
 
     def __timing_function_call(self, state, name):
-        call_high = state.addr in self.implicit_high_block_map
+        call_high = self.__is_high_procedure_call(state, name)
         if not call_high:
             return
-        plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
+        plugin = state.plugins[timing.ProcedureRecordPlugin.NAME]
         acc_val = self.__timing_function_map[name].accumulate_delegate(state)
         plugin.temp_interval.acc += acc_val
 
     def __call_after_handler(self, state):
-        plugin = state.plugins[util_progress.ProgressRecordPlugin.NAME]
+        plugin = state.plugins[progress.ProgressRecordPlugin.NAME]
         if not plugin.callfunction:
             return
         if state.addr in plugin.callfunction.addrs:
             return
-        sim_name = state.inspect.simprocedure_name
         if not plugin.callstate:
             return
+        sim_name = plugin.callstate.inspect.simprocedure_name
         prev_progress_depth = plugin.records[len(plugin.records)-1].depth if len(plugin.records) > 0 else -1
         progress_obj = plugin.callfunction.progress_delegate(plugin.callstate, state)
         call_addr = plugin.callstate.addr
-        call_high = util_implicit.check_addr_high(self.rda_graph, call_addr)
+        call_high = self.__is_high_procedure_call(plugin.callstate, sim_name)
         progress_index = plugin.records[-1].index + 1 if len(plugin.records) > 0 else 0
-        progress_record = util_progress.ProgressRecord(progress_obj, state.history.block_count, call_high, call_addr, progress_index)
+        progress_record = progress.ProgressRecord(progress_obj, state.history.block_count, call_high, call_addr, progress_index)
         plugin.callfunction = None
         plugin.callstate = None
         plugin.records.append(progress_record)
-        timing_plugin = state.plugins[util_timing.ProcedureRecordPlugin.NAME]
-        timing_plugin.temp_interval.ins_count = util_timing.get_history_high_instruction_count(state, prev_progress_depth, self.implicit_high_block_map)
+        timing_plugin = state.plugins[timing.ProcedureRecordPlugin.NAME]
+        timing_plugin.temp_interval.ins_count = timing.get_history_high_instruction_count(state, prev_progress_depth, self.implicit_high_block_map)
         timing_plugin.map[len(plugin.records)-1] = timing_plugin.temp_interval
-        timing_plugin.temp_interval = util_timing.TimingInterval(0,0)
+        timing_plugin.temp_interval = timing.TimingInterval(0,0)
 
     def __default_termination_args(self):
         return TerminationArgs()
 
     def __default_progress_args(self):
         return ProgressArgs(functions=[
-                util_progress.PutsProgressFunction(self.project.kb),
-                util_progress.PrintfProgressFunction(self.project.kb)
+                progress.PutsProgressFunction(self.project.kb),
+                progress.PrintfProgressFunction(self.project.kb)
         ])
 
     def __default_timing_args(self):
-        return TimingArgs(functions=[util_timing.SleepTimingFunction()])
+        return TimingArgs(functions=[timing.SleepTimingFunction()])
     
     def __find_subject_addrs(self, procedure_name, arg_regs):
+        if not arg_regs or len(arg_regs) == 0:
+            cc_args = information.get_sim_proc_reg_args(self.project, procedure_name)
+            arg_regs = list(map(lambda r: r.reg_name, cc_args)) if cc_args else []
+        if len(arg_regs) == 0:
+            print("Warning: " + procedure_name + " has no argument registers!")
+            return []
         subject_addrs = []
-        arg_regs = util_information.get_sim_proc_reg_args(self.project, procedure_name) if not arg_regs else arg_regs
-        for wrap_addr in util_information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
-            for wrapper in util_information.find_cfg_nodes(self.cfg, wrap_addr):
+        for wrap_addr in information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
+            for wrapper in information.find_cfg_nodes(self.cfg, wrap_addr):
                 for caller in wrapper.predecessors:
                     for reg in arg_regs:
-                        offset, size = self.project.arch.registers[reg.reg_name]
-                        for occ_node in util_information.find_first_reg_occurences_from_cfg_node(self.rda_graph, caller, offset, self.start_node.addr):
+                        if isinstance(reg, str):
+                            offset, size = self.project.arch.registers[reg]
+                        elif isinstance(reg, int):
+                            offset = reg
+                            size = None
+                        else:
+                            raise Exception("Argument registers must be either an integer (offset) or a string (register name)!")
+                        for occ_node in information.find_first_reg_occurences_from_cfg_node(self.project, self.rda_graph, caller, offset, self.start_node.addr, reg_size=size):
                             subject_addrs.append(occ_node.codeloc.ins_addr)
         subject_addrs = list(set(subject_addrs))
         return subject_addrs
 
+    def __is_high_procedure_call(self, state, procedure_name):
+        wrap_addrs = list(information.get_sim_proc_and_wrapper_addrs(self.project, procedure_name))
+        his = state.history
+        while his.addr in wrap_addrs:
+            his = his.parent
+        is_high = his.addr in self.implicit_high_block_map
+        return is_high
 
 #Since a angr.BP_BEFORE breakpoint on fork doesn't work we do this manually...
 class StateStepBreakpoint(angr.exploration_techniques.ExplorationTechnique):

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 import copy
-from customutil import util_information, util_explicit, util_rda
+from information_flow_analysis import information, explicit, rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def enrich_rda_graph_implicit(rda_graph, cdg, function_addrs):
@@ -22,7 +22,7 @@ def enrich_rda_graph_implicit(rda_graph, cdg, function_addrs):
 
 def __enrich_rda_graph_implicit__(rda_graph, branching):
     enriched_blocks = []
-    for branch_ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, branching.branch_ins):
+    for branch_ins_rda_node in rda.find_rda_graph_nodes(rda_graph, branching.branch_ins):
         if not branch_ins_rda_node:
             continue
         if branch_ins_rda_node.branching_sec_class >= branch_ins_rda_node.sec_class:
@@ -31,15 +31,15 @@ def __enrich_rda_graph_implicit__(rda_graph, branching):
         for node in branching.subjects:
             enriched_blocks.append((branch_ins_rda_node.sec_class, node))
             for ins in node.instruction_addrs:
-                for ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, ins):
+                for ins_rda_node in rda.find_rda_graph_nodes(rda_graph, ins):
                     if not ins_rda_node:
                         continue
                     rda_graph.add_edge(branch_ins_rda_node,ins_rda_node,type=1) #Implicit edge
-                    util_rda.elevate_implicit(rda_graph, ins_rda_node, branch_ins_rda_node)
+                    rda.elevate_implicit(rda_graph, ins_rda_node, branch_ins_rda_node)
     return enriched_blocks
 
 def check_addr_high(rda_graph, addr):
-    for n in util_rda.find_rda_graph_nodes(rda_graph, addr):
+    for n in rda.find_rda_graph_nodes(rda_graph, addr):
         if n.sec_class == 2:
             return True
     return False
@@ -49,13 +49,13 @@ def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
     for n in rda_graph.nodes:
         if ((n.codeloc and n.codeloc.ins_addr in subject_addrs) if subject_addrs else n.given_sec_class == subject_security_class)\
             and subject_security_class < n.implicit_sec_class:
-            source, inters = util_rda.get_intermediates(n.implicit_source)
+            source, inters = rda.get_intermediates(n.implicit_source)
             yield ImplicitLeak(source, inters, n)
 
 #Test if branch node creates a high context
 def test_high_branch_context(rda_graph, cfg_node, high_addrs):
     branch_ins = get_branch_ins(cfg_node)
-    for branch_ins_rda_node in util_rda.find_rda_graph_nodes(rda_graph, branch_ins):
+    for branch_ins_rda_node in rda.find_rda_graph_nodes(rda_graph, branch_ins):
         if branch_ins_rda_node.sec_class == 2:
             return True
     return False
@@ -66,7 +66,7 @@ def get_branch_ins(cfg_node):
 def test_high_loop_context(rda_graph, cfg, loop, high_addrs):
     loop_block_addrs = map(lambda n: n.addr, loop.body_nodes)
     for block_addr in loop_block_addrs:
-        cfg_node = util_information.find_cfg_node(cfg, block_addr)
+        cfg_node = information.find_cfg_node(cfg, block_addr)
         if test_high_branch_context(rda_graph, cfg_node, high_addrs):
             return True
     return False

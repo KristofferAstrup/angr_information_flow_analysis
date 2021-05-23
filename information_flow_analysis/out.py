@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 import random
-from customutil import util_explicit, util_rda
+from information_flow_analysis import explicit, rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def cfgs(proj, simgr, state):
@@ -37,7 +37,7 @@ def draw_everything(proj, simgr, state, start_node=None):
 
     if start_node:
         print("--RDA_GRAPH--")
-        rda_graph = util_rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+        rda_graph = rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
         draw_rda_graph(proj, rda_graph)
         print("Plotted to rda_graph.pdf")
 

@@ -11,7 +11,7 @@ import networkx as nx
 from networkx_query import search_nodes, search_edges
 import sys
 sys.path.append('../../../')
-from customutil import util_analysis
+from information_flow_analysis import analysis
 
 def main():
     proj = angr.Project('nothing.out', load_options={'auto_load_libs':False})
@@ -19,7 +19,7 @@ def main():
 
     high_addrs = [0x401155, 0x401158]
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
     ifa.find_and_add_subject_addrs("puts")
     for flow in ifa.find_explicit_flows():
         print(flow)

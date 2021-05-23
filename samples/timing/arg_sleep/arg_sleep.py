@@ -2,7 +2,7 @@ import angr
 import claripy
 import sys
 sys.path.append('../../../')
-from customutil import util_analysis
+from information_flow_analysis import analysis
 
 def main():
     proj = angr.Project('./arg_sleep.out', load_options={'auto_load_libs':False})
@@ -17,7 +17,7 @@ def main():
     high_addrs = [0x00401175, 0x00401178]
     start_addr = 0x401169 #main entry block
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     ifa.draw_everything()
     return
     ifa.find_covert_leaks()

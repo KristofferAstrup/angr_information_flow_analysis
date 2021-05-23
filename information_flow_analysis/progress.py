@@ -6,7 +6,7 @@ import networkx as nx
 import pydot
 import copy
 import sys
-from customutil import util_out, util_information, util_implicit
+from information_flow_analysis import out, information, implicit
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def determine_progress_leak(states):
@@ -14,8 +14,8 @@ def determine_progress_leak(states):
         for state_b in states:
             if state_a == state_b:
                 continue
-            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
-                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+            for branch_instance in state_a.plugins[implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[implicit.BranchRecordPlugin.NAME].records:
                     continue
                 for progress_instance in state_a.plugins[ProgressRecordPlugin.NAME].records:
                     if not progress_instance.high:
@@ -64,27 +64,11 @@ def test_observer_diff_simgr(states):
             return (prev_state, state)
     return None
 
-#not used atm
-# def init_progress_recording(proj, state, subject_addrs):
-#     for subject_addr in subject_addrs:
-#         proj.hook(subject_addr, lambda s: procedure_hook(proj, s, proc, proc.cc.args))
-#     state.register_plugin(ProgressRecordPlugin.NAME, ProgressRecordPlugin({}))
-
-# def procedure_hook(proj, state, arg_regs):
-#     plugin = state.plugins[ProcedureRecordPlugin.NAME]
-#     call = []
-#     for arg_reg in arg_regs:
-#         offset, size = proj.arch.registers[arg_reg.reg_name]
-#         reg = state.registers.load(offset, size)
-#         val = state.solver.eval(reg)
-#         call.append(reg,val)
-#     plugin.records.extend(call)
-
 def PutsProgressFunction(knowledge_base):
-    return ProgressFunction('puts',None,std_out_progress,knowledge_base=knowledge_base)
+    return ProgressFunction('puts',[72],std_out_progress,knowledge_base=knowledge_base)
 
 def PrintfProgressFunction(knowledge_base):
-    return ProgressFunction('printf',None,std_out_progress,knowledge_base=knowledge_base)
+    return ProgressFunction('printf',[16,64,72],std_out_progress,knowledge_base=knowledge_base)
 
 def std_out_progress(pre_state, post_state):
         pre = pre_state.posix.dumps(1).decode('UTF-8')
@@ -97,7 +81,7 @@ class ProgressFunction:
         if not knowledge_base and not addrs:
             raise Exception('Must have either knowledge_base or addrs!')
         if not addrs:
-            self.addrs = util_information.find_addrs_of_function(knowledge_base,name)
+            self.addrs = information.find_addrs_of_function(knowledge_base,name)
         else:
             self.addrs = addrs
         self.name = name
@@ -139,4 +123,4 @@ class ProgressLeakProof:
         self.progress_diff = progress_diff
     
     def __repr__(self):
-        return "<ProgressLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", from progress diff: " + str(progress_diff) + ">"
+        return "<ProgressLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", from progress diff: " + str(self.progress_diff) + ">"

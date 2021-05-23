@@ -14,7 +14,7 @@ import angr.analyses.reaching_definitions.dep_graph as dep_graph
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_analysis, util_information, util_out, util_explicit, util_implicit, util_progress, util_termination
+from information_flow_analysis import analysis, information, out, explicit, implicit, progress, termination
 
 def main():
     proj = angr.Project('samples/termination/non_termination/non_termination.out', load_options={'auto_load_libs':False})
@@ -28,7 +28,7 @@ def main():
 
     high_addrs = [0x401155, 0x401158]
 
-    ifa = util_analysis.InformationFlowAnalysis(proj, high_addrs, start="main")
+    ifa = analysis.InformationFlowAnalysis(proj, high_addrs, start="main")
     for leak in ifa.find_covert_leaks():
         print(leak)
     return

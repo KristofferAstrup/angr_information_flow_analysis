@@ -6,7 +6,7 @@ import networkx as nx
 import pydot
 import copy
 import sys
-from customutil import util_implicit, util_information, util_progress
+from information_flow_analysis import implicit, information, progress
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def determine_timing_procedure_leak(states):
@@ -14,41 +14,51 @@ def determine_timing_procedure_leak(states):
         for state_b in states:
             if state_a == state_b:
                 continue
-            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
-                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+            for branch_instance in state_a.plugins[implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[implicit.BranchRecordPlugin.NAME].records:
                     continue
-                imm_progress_instance_a = immediate_progress(state_a, branch_instance)
-                if not imm_progress_instance_a:
+                progress_a = immediate_progress(state_a, branch_instance)
+                if not progress_a:
                     continue
-                imm_progress_instance_b = immediate_progress(state_a, branch_instance)
-                if not imm_progress_instance_b:
+                progress_b = immediate_progress(state_b, branch_instance)
+                if not progress_b:
                     continue
-                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_a.index]
-                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_b.index]
-                if abs(timing_interval_a.acc - timing_interval_b.acc) > 0:
+                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[progress_a.index] if progress_a else None
+                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[progress_b.index] if progress_b else None
+                if calc_procedure_diff(timing_interval_a, timing_interval_b) > 0:
                     return TimingProcedureLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
+
+def calc_procedure_diff(interval_a, interval_b):
+    val_a = interval_a.acc if interval_a else 0
+    val_b = interval_b.acc if interval_b else 0
+    return abs(val_a - val_b)
 
 def determine_timing_instruction_leak(states, ins_count_threshold):
     for state_a in states:
         for state_b in states:
             if state_a == state_b:
                 continue
-            for branch_instance in state_a.plugins[util_implicit.BranchRecordPlugin.NAME].records:
-                if not branch_instance in state_b.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+            for branch_instance in state_a.plugins[implicit.BranchRecordPlugin.NAME].records:
+                if not branch_instance in state_b.plugins[implicit.BranchRecordPlugin.NAME].records:
                     continue
-                imm_progress_instance_a = immediate_progress(state_a, branch_instance)
-                if not imm_progress_instance_a:
+                progress_a = immediate_progress(state_a, branch_instance)
+                if not progress_a:
                     continue
-                imm_progress_instance_b = immediate_progress(state_a, branch_instance)
-                if not imm_progress_instance_b:
+                progress_b = immediate_progress(state_b, branch_instance)
+                if not progress_b:
                     continue
-                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_a.index]
-                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[imm_progress_instance_b.index]
-                if abs(timing_interval_a.ins_count - timing_interval_b.ins_count) > ins_count_threshold:
+                timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[progress_a.index] if progress_a else None
+                timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[progress_b.index] if progress_b else None
+                if calc_ins_diff(timing_interval_a, timing_interval_b) > ins_count_threshold:
                     return TimingEpsilonLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
 
+def calc_ins_diff(interval_a, interval_b):
+    val_a = interval_a.ins_count if interval_a else 0
+    val_b = interval_b.ins_count if interval_b else 0
+    return abs(val_a - val_b)
+
 def immediate_progress(state, branching):
-    for prog in state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+    for prog in state.plugins[progress.ProgressRecordPlugin.NAME].records:
         if prog.depth < branching.depth:
             continue
         return prog
@@ -69,10 +79,10 @@ def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0
     hook_addrs = []
     for record_procedure in record_procedures:
         proc_name = record_procedure[0]
-        proc_addr = util_information.get_sim_proc_addr(proj, proc_name)
+        proc_addr = information.get_sim_proc_addr(proj, proc_name)
         if proc_addr:
             proc = proj._sim_procedures[proc_addr]
-            proc_wrapper_funcs = util_information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
+            proc_wrapper_funcs = information.get_sim_proc_function_wrapper_addrs(proj, proc_name)
             for wrap_addr in proc_wrapper_funcs:
                 args = proc.cc.args if not record_procedure[1] else record_procedure[1]
                 proj.hook(wrap_addr, lambda s: procedure_hook(proj, s, proc, args))
@@ -101,18 +111,6 @@ def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0
         proj.unhook(addr)
 
     return leaks
-
-# def procedure_hook(proj, state):
-    # plugin = state.plugins[ProcedureRecordPlugin.NAME]
-    # call = {}
-    # for arg_reg in arg_regs:
-    #     offset, size = proj.arch.registers[arg_reg.reg_name]
-    #     reg = state.registers.load(offset, size)
-    #     val = state.solver.eval(reg)
-    #     call[arg_reg.reg_name] = val
-    # key = procedure.display_name
-    # record = ProcedureRecord(call, state.history.block_count)
-    # plugin.map.setdefault(key, []).append(record)
 
 def has_post_progress(proj, state):
     progress = state.posix.dumps(1)
@@ -171,7 +169,6 @@ def get_lineage_instruction_count(state):
 def get_history_high_instruction_count(state, termination_depth, high_block_map):
     high_ins_count = 0
     his = state.history
-    #print(list(map(lambda h: h.addr, state.history.lineage)))
     while his.block_count > termination_depth:
         if his.addr in high_block_map:
             high_ins_count += len(high_block_map[his.addr].instruction_addrs)
@@ -234,4 +231,4 @@ class TimingEpsilonLeakProof:
         self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + " eps: " + str(abs(self.interval1.ins_count - self.interval2.ins_count)) + ">"
+        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + " diff: " + calc_procedure_diff(self.interval1, self.interval2) + ">"

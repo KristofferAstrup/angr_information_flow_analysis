@@ -17,7 +17,7 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress
+from information_flow_analysis import information, out, explicit, implicit, progress
 
 def main():
     proj = angr.Project('non_termination2.out', load_options={'auto_load_libs':False})
@@ -30,7 +30,7 @@ def main():
         state.add_constraints(byte >= '\x20') # ' '
         state.add_constraints(byte <= '\x7e') # '~'
 
-    cfg = util_information.cfg_emul(proj, simgr, state)
+    cfg = information.cfg_emul(proj, simgr, state)
     cdg = proj.analyses.CDG(cfg = cfg)
 
     #high_addrs = [0x401155, 0x401158]
@@ -52,21 +52,21 @@ def main():
     t1 = time.process_time()
     print("Delta: " + str(t1-t0))
 
-    util_out.write_stashes(simgr, args=[arg0])
+    out.write_stashes(simgr, args=[arg0])
 
     # post_dom_tree = cdg.get_post_dominators()
-    # dep_graph = util_explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+    # dep_graph = explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
 
     
 
-    # branches = util_implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
+    # branches = implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
     # print("========EXPLORE========")
     
     # print("========DIFF========")
     # for branch in branches:
     #     print("========BRANCH========")
     #     print(branch)
-    #     leak = util_progress.test_observer_diff(proj, cfg, state, branch)
+    #     leak = progress.test_observer_diff(proj, cfg, state, branch)
     #     if leak:
     #         print(leak)
 

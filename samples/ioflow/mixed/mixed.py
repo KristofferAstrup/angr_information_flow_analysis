@@ -13,7 +13,7 @@ import angr.analyses.reaching_definitions.dep_graph as dep_graph
 from networkx_query import search_nodes, search_edges
 import sys
 sys.path.append('../../../')
-from customutil import util
+from information_flow_analysis import util
 
 def main():
     proj = angr.Project('mixed.out', load_options={'auto_load_libs':False})
@@ -47,7 +47,7 @@ def main():
                     subject_addrs.append(occ_node[0].location.ins_addr)
 
     start_node = util.find_cfg_node(cfg, start_addr)
-    func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
+    func_addrs = information.get_unique_reachable_function_addresses(cfg, start_node)
     super_dep_graph = util.get_super_dep_graph(proj, func_addrs)
 
     util.link_externals_to_earliest_definition(super_dep_graph, cdg, [start_node])

@@ -4,23 +4,23 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress
+from information_flow_analysis import information, out, explicit, implicit, progress
 
 def determine_termination_leak(nonterm_state, term_states):
     high_nonterm_loop = False
-    for branch_instance in nonterm_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+    for branch_instance in nonterm_state.plugins[implicit.BranchRecordPlugin.NAME].records:
         if nonterm_state.addr == branch_instance.block_addr:
             high_nonterm_loop = True
     if not high_nonterm_loop:
         return None
     for term_state in term_states:
-        for branch_instance in nonterm_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
-            if not branch_instance in term_state.plugins[util_implicit.BranchRecordPlugin.NAME].records:
+        for branch_instance in nonterm_state.plugins[implicit.BranchRecordPlugin.NAME].records:
+            if not branch_instance in term_state.plugins[implicit.BranchRecordPlugin.NAME].records:
                 continue
-            for progress_instance in term_state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+            for progress_instance in term_state.plugins[progress.ProgressRecordPlugin.NAME].records:
                 if progress_instance.depth < branch_instance.depth:
                     continue
-                if progress_instance in nonterm_state.plugins[util_progress.ProgressRecordPlugin.NAME].records:
+                if progress_instance in nonterm_state.plugins[progress.ProgressRecordPlugin.NAME].records:
                     continue
                 non_term_loop = get_nonterm_loop(nonterm_state)
                 return TerminationLeakProof(non_term_loop, nonterm_state, term_state, progress_instance)
@@ -29,7 +29,7 @@ def determine_termination_leak(nonterm_state, term_states):
 def get_termination_leak(rda_graph, cfg, high_addrs, spinning_state, progress_states): 
     #Progress_states are simply states that are not spinning and may be used as evidence for a termination leak
     infinite_loop_history_begin, infinite_loop = get_infinite_loop_begin_of_spinning(spinning_state)
-    high_context_loop = util_implicit.test_high_loop_context(rda_graph, cfg, infinite_loop, high_addrs)
+    high_context_loop = implicit.test_high_loop_context(rda_graph, cfg, infinite_loop, high_addrs)
     if not high_context_loop:
         None
     loop_block_addrs = list(map(lambda n: n.addr, infinite_loop.body_nodes))
@@ -42,7 +42,7 @@ def get_termination_leak(rda_graph, cfg, high_addrs, spinning_state, progress_st
         #     his = his.parent
         # if his != infinite_loop_history_begin:
         #     continue
-        if not util_implicit.check_addr_high(rda_graph, his.addr):
+        if not implicit.check_addr_high(rda_graph, his.addr):
             continue
         if progress_state.posix.dumps(1).startswith(spinning_state.posix.dumps(1)):
             post_progress = progress_state.posix.dumps(1)[len(spinning_state.posix.dumps(1)):]
@@ -114,10 +114,10 @@ class TerminationLeakProof:
     def __repr__(self):
         return "<TerminationLeakProof @ loop: " + str(self.loop) + ", loop state : " + str(self.spinning_state) + ", progress state: " + str(self.progress_state) + ", progress diff: " + str(self.progress_diff) + ">"
 
- # cfg = util_information.cfg_emul(proj, simgr, state)
-    # start_node = util_information.find_cfg_node(cfg, 0x401149)
-    # func_addrs = util_information.get_unique_reachable_function_addresses(cfg, start_node)
-    # funcs = util_information.find_func_from_addrs(proj, func_addrs)
+ # cfg = information.cfg_emul(proj, simgr, state)
+    # start_node = information.find_cfg_node(cfg, 0x401149)
+    # func_addrs = information.get_unique_reachable_function_addresses(cfg, start_node)
+    # funcs = information.find_func_from_addrs(proj, func_addrs)
     # loop_res = proj.analyses.LoopFinder(functions=funcs)
     # # for loop in loop_res.loops:
     # #     print(hex(loop.entry.addr))

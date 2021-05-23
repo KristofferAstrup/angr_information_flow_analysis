@@ -2,7 +2,7 @@ import angr
 import claripy
 import sys
 sys.path.append('../../../')
-from customutil import util_out, util_analysis
+from information_flow_analysis import out, analysis
 
 def main():
     proj = angr.Project('./samples/timing/simple_diff/simple_diff.out', load_options={'auto_load_libs':False})
@@ -18,7 +18,7 @@ def main():
     high_addrs = [0x401155, 0x401158]
     start_addr = 0x401149 #main entry block
 
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     for leak in ifa.find_covert_leaks():
         print(leak)
     pass

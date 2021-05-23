@@ -4,7 +4,7 @@ from angrutils import *
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from customutil import util_information, util_rda
+from information_flow_analysis import information, rda
 from networkx.drawing.nx_pydot import graphviz_layout
 
 def enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs):
@@ -13,17 +13,17 @@ def enrich_rda_graph_explicit(rda_graph, high_addrs, subject_addrs):
 
     for subject_addr in subject_addrs:
         rda_graph.enriched_class_addrs[1].append(subject_addr)
-        for node in util_rda.find_rda_graph_nodes(rda_graph, subject_addr):
+        for node in rda.find_rda_graph_nodes(rda_graph, subject_addr):
             if not node:
                 continue
-            util_rda.elevate_explicit(rda_graph, node, 1)
+            rda.elevate_explicit(rda_graph, node, 1)
 
     for high_addr in high_addrs:
         rda_graph.enriched_class_addrs[2].append(high_addr)
-        for node in util_rda.find_rda_graph_nodes(rda_graph, high_addr):
+        for node in rda.find_rda_graph_nodes(rda_graph, high_addr):
             if not node:
                 continue
-            util_rda.elevate_explicit(rda_graph, node, 2)
+            rda.elevate_explicit(rda_graph, node, 2)
 
 def get_super_dep_graph(proj, function_addrs):
     cfg = proj.analyses.CFGFast() #adds info to kb

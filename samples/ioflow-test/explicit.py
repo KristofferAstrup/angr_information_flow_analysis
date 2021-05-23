@@ -7,7 +7,7 @@ from angr.analyses.ddg import ProgramVariable
 from angrutils import *
 import sys
 sys.path.append('../../')
-from customutil import util
+from information_flow_analysis import util
 
 def main():
     proj = angr.Project('explicit.out', load_options={'auto_load_libs':False})

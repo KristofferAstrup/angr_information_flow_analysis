@@ -16,7 +16,7 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from customutil import util_information, util_out, util_explicit, util_implicit, util_progress, util_termination, util_analysis
+from information_flow_analysis import information, out, explicit, implicit, progress, termination, analysis
 
 def main():
     proj = angr.Project('non_termination1.5.out', load_options={'auto_load_libs':False})
@@ -29,7 +29,7 @@ def main():
         state.add_constraints(byte >= '\x20') # ' '
         state.add_constraints(byte <= '\x7e') # '~'
 
-    cfg = util_information.cfg_emul(proj, simgr, state)
+    cfg = information.cfg_emul(proj, simgr, state)
     cdg = proj.analyses.CDG(cfg = cfg)
 
     high_addrs = [0x401155, 0x401158]
@@ -45,10 +45,10 @@ def main():
     simgr.stash(from_stash='found', to_stash='active')
     simgr.explore()
 
-    util_out.write_stashes(simgr, args=[arg0], verbose=False)
-    ifa = util_analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
+    out.write_stashes(simgr, args=[arg0], verbose=False)
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start=start_addr,high_addrs=high_addrs)
     proofs = ifa.find_termination_leaks()
-    #proofs = util_termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
+    #proofs = termination.get_termination_leak(super_dep_graph, cfg, high_addrs, simgr.spinning[0], simgr.deadended)
     #print(proofs)
 
 if __name__ == "__main__":

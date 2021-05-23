@@ -3,7 +3,7 @@ import monkeyhex
 from angrutils import *
 import sys
 sys.path.append('../')
-from customutil import util
+from information_flow_analysis import util
 
 def main():
     proj = angr.Project('helloworld.out', load_options={'auto_load_libs':False})
