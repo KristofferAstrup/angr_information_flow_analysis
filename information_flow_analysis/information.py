@@ -181,10 +181,10 @@ def find_func_from_addrs(proj, addrs):
 def find_func_from_addr(proj, addr):
     return proj.kb.functions.get_by_addr(addr)
 
-def find_first_reg_occurences_in_cfg_node(project, cfg_node, reg_offset, ins_offset, reg_size=None):
-    if not cfg_node.block:
+def find_first_reg_occurences_in_block(project, block, reg_offset, ins_offset, reg_size=None):
+    if not block:
         return None
-    for ins in reversed(cfg_node.block.capstone.insns):
+    for ins in reversed(block.capstone.insns):
         ins_addr = ins.address
         if ins_offset and ins_addr > ins_offset:
             continue
@@ -204,7 +204,7 @@ def get_rda_reg_vars(rda_graph, ins_addr):
             yield node
 
 def find_first_reg_occurences_from_cfg_node(project, rda_graph, cfg_node, reg_offset, stop_block_addr, reg_size=None, ins_offset = None):
-    occ_addr = find_first_reg_occurences_in_cfg_node(project, cfg_node, reg_offset, ins_offset)
+    occ_addr = find_first_reg_occurences_in_block(project, cfg_node.block, reg_offset, ins_offset)
     if occ_addr:
         for reg_var in get_rda_reg_vars(rda_graph, occ_addr):
             if reg_var and reg_var.atom.reg_offset == reg_offset and (reg_var.atom.size == reg_size if reg_size else True):
@@ -217,3 +217,15 @@ def find_first_reg_occurences_from_cfg_node(project, rda_graph, cfg_node, reg_of
         occ = find_first_reg_occurences_from_cfg_node(project, rda_graph, n, reg_offset, stop_block_addr, None)
         occs.extend(occ)
     return occs
+
+def find_first_reg_occurence_from_history(project, rda_graph, history, reg_offset, stop_block_addr, reg_size=None, ins_offset = None):
+    block = project.factory.block(history.addr)
+    occ_addr = find_first_reg_occurences_in_block(project, block, reg_offset, ins_offset)
+    if occ_addr:
+        for reg_var in get_rda_reg_vars(rda_graph, occ_addr):
+            if reg_var and reg_var.atom.reg_offset == reg_offset and (reg_var.atom.size == reg_size if reg_size else True):
+                return reg_var
+        return None
+    if history.addr == stop_block_addr:
+        return None
+    return find_first_reg_occurence_from_history(project, rda_graph, history.parent, reg_offset, stop_block_addr, reg_size=reg_size, ins_offset=ins_offset)

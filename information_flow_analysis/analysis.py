@@ -190,6 +190,14 @@ class InformationFlowAnalysis:
 
         #Timing
         if timing_args.included:
+            timing_procedure_call_leaks = timing.determine_timing_procedure_call_leaks(states)
+            if len(timing_procedure_call_leaks) > 0:
+                if verbose:
+                    print("Found " + str(len(timing_procedure_call_leaks)) + " timing procedure call leaks:")
+                    for leak in timing_procedure_call_leaks:
+                        print(leak)
+                return timing_procedure_call_leaks
+
             timing_procedure_leak = timing.determine_timing_procedure_leak(states)
             if timing_procedure_leak:
                 if verbose:
@@ -255,12 +263,23 @@ class InformationFlowAnalysis:
         plugin.callstate = state.copy()
 
     def __timing_function_call(self, state, name):
-        call_high = self.__is_high_procedure_call(state, name)
-        if not call_high:
-            return
+        timing_func = self.__timing_function_map[name]
         plugin = state.plugins[timing.ProcedureRecordPlugin.NAME]
-        acc_val = self.__timing_function_map[name].accumulate_delegate(state)
-        plugin.temp_interval.acc += acc_val
+
+        high_arg_regs = []
+        for arg_reg in timing_func.registers:
+            offset, size = self.__unwrap_argument_register(arg_reg)
+            occ_node = information.find_first_reg_occurence_from_history(self.project, self.rda_graph, state.history, offset, self.start_node.addr, reg_size=size)
+            if occ_node and implicit.check_node_high(occ_node):
+                high_arg_regs.append(timing.HighArgument(arg_reg, occ_node.codeloc.ins_addr))
+        if len(high_arg_regs) > 0:
+            call = timing.HighArgumentCall(high_arg_regs, state.addr)
+            plugin.temp_interval.high_arg_calls.append(call)
+
+        call_high = self.__is_high_procedure_call(state, name)
+        if call_high:
+            acc_val = timing_func.accumulate_delegate(state)
+            plugin.temp_interval.acc += acc_val
 
     def __call_after_handler(self, state):
         plugin = state.plugins[progress.ProgressRecordPlugin.NAME]
@@ -308,14 +327,8 @@ class InformationFlowAnalysis:
         for wrap_addr in information.get_sim_proc_function_wrapper_addrs(self.project, procedure_name):
             for wrapper in information.find_cfg_nodes(self.cfg, wrap_addr):
                 for caller in wrapper.predecessors:
-                    for reg in arg_regs:
-                        if isinstance(reg, str):
-                            offset, size = self.project.arch.registers[reg]
-                        elif isinstance(reg, int):
-                            offset = reg
-                            size = None
-                        else:
-                            raise Exception("Argument registers must be either an integer (offset) or a string (register name)!")
+                    for arg_reg in arg_regs:
+                        offset, size = self.__unwrap_argument_register(arg_reg)
                         for occ_node in information.find_first_reg_occurences_from_cfg_node(self.project, self.rda_graph, caller, offset, self.start_node.addr, reg_size=size):
                             subject_addrs.append(occ_node.codeloc.ins_addr)
         subject_addrs = list(set(subject_addrs))
@@ -328,6 +341,16 @@ class InformationFlowAnalysis:
             his = his.parent
         is_high = his.addr in self.implicit_high_block_map
         return is_high
+
+    def __unwrap_argument_register(self, arg_reg):
+        if isinstance(arg_reg, str):
+            offset, size = self.project.arch.registers[arg_reg]
+        elif isinstance(arg_reg, int):
+            offset = arg_reg
+            size = None
+        else:
+            raise Exception("Argument registers must be either an integer (offset) or a string (register name)!")
+        return (offset, size)
 
 #Since a angr.BP_BEFORE breakpoint on fork doesn't work we do this manually...
 class StateStepBreakpoint(angr.exploration_techniques.ExplorationTechnique):

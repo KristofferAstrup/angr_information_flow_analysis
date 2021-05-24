@@ -9,6 +9,16 @@ import sys
 from information_flow_analysis import implicit, information, progress
 from networkx.drawing.nx_pydot import graphviz_layout
 
+def determine_timing_procedure_call_leaks(states):
+    leaks = []
+    for state in states:
+        for progress_instance in state.plugins[progress.ProgressRecordPlugin.NAME].records:
+            timing_interval = state.plugins[ProcedureRecordPlugin.NAME].map[progress_instance.index]
+            if len(timing_interval.high_arg_calls) > 0:
+                for high_arg_call in timing_interval.high_arg_calls:
+                    leaks.append(TimingProcedureCallLeak(state, timing_interval))
+    return leaks
+
 def determine_timing_procedure_leak(states):
     for state_a in states:
         for state_b in states:
@@ -178,21 +188,39 @@ def get_history_high_instruction_count(state, termination_depth, high_block_map)
     return high_ins_count
 
 def SleepTimingFunction():
-    return TimingFunction('sleep', SleepAccumulateDelegate)
+    return TimingFunction('sleep', [16, 72], SleepAccumulateDelegate)
 
 def SleepAccumulateDelegate(state):
     val = state.solver.eval(state.regs.rdi)
     return val
 
 class TimingFunction:
-    def __init__(self, name, accumulate_delegate):
+    def __init__(self, name, registers, accumulate_delegate):
         self.name = name
+        self.registers = registers
         self.accumulate_delegate = accumulate_delegate
+
+class HighArgument:
+    def __init__(self, reg, ins_addr):
+        self.reg = reg
+        self.ins_addr = ins_addr
+
+    def __repr__(self):
+        return "<" + str(self.reg) + ", " + str(hex(self.ins_addr)) + ">"
+
+class HighArgumentCall:
+    def __init__(self, high_args, block_addr):
+        self.high_args = high_args
+        self.block_addr = block_addr
+
+    def __repr__(self):
+        return "<HighArgumentCall @ " + str(hex(self.block_addr)) + ", high arguments: " + str(self.high_args) + ">"
 
 class TimingInterval:
     def __init__(self, acc, ins_count):
         self.acc = acc
         self.ins_count = ins_count
+        self.high_arg_calls = []
 
 class ProcedureRecord:
     def __init__(self, call, depth):
@@ -210,6 +238,14 @@ class ProcedureRecordPlugin(angr.SimStatePlugin):
     @angr.SimStatePlugin.memo
     def copy(self, memo):
         return ProcedureRecordPlugin(self.map, self.temp_interval)
+
+class TimingProcedureCallLeak:
+    def __init__(self, state, interval):
+        self.state = state
+        self.interval = interval
+
+    def __repr__(self):
+        return "<TimingProcedureCallLeak @ calls: " + str(self.interval.high_arg_calls) + ">"
 
 class TimingProcedureLeakProof:
     def __init__(self, branching, state1, state2, interval1, interval2):
