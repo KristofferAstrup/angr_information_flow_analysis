@@ -1,5 +1,5 @@
 # Binary Information Flow Analysis tool using Angr
-Install using `pip install information-flow-analysis`.
+Install using [`pip install information-flow-analysis`](https://pypi.org/project/information-flow-analysis/#description).
 
 ## Output relevant graphs
 ### Output CFGS
