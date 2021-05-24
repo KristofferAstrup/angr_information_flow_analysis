@@ -44,6 +44,9 @@ def check_addr_high(rda_graph, addr):
             return True
     return False
 
+def check_node_high(node):
+    return node.sec_class == 2
+
 #find possible implicit information flows using the enriched rda graph
 def find_implicit(rda_graph, subject_addrs=None, subject_security_class=1):
     for n in rda_graph.nodes:
