@@ -1,7 +1,5 @@
 import angr
 import claripy
-import sys
-sys.path.append('../../../')
 from information_flow_analysis import analysis, termination
 
 def main():
@@ -12,6 +10,8 @@ def main():
     state = proj.factory.entry_state(args=['./non_termination2.out', arg0], add_options={angr.options.UNICORN})
 
     high_addrs = [0x401155, 0x401158]
+
+    return #This example takes a long time to analyze due to the combinatorial explosion of the while() loops; we omit it
 
     ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs,termination_args=analysis.TerminationArgs(bound=1000))
     leaks = ifa.analyze()

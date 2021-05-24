@@ -1,7 +1,5 @@
 import angr
 import claripy
-import sys
-sys.path.append('../../../')
 from information_flow_analysis import analysis, timing
 
 def main():
