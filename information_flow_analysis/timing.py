@@ -267,4 +267,4 @@ class TimingEpsilonLeakProof:
         self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + " diff: " + calc_procedure_diff(self.interval1, self.interval2) + ">"
+        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + ", diff: " + str(calc_ins_diff(self.interval1, self.interval2)) + ">"

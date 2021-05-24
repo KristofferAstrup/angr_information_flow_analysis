@@ -88,6 +88,8 @@ def find_branchings(cdg, function_addrs):
         successors = list(cdg.graph.successors(n))
         if len(successors) < 1:
             continue
+        if len(n.successors) < 2: #Note: this is CFG successors
+            continue
         yield Branching(n, successors)
 
 class BranchRecord:

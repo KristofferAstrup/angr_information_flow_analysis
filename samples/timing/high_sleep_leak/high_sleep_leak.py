@@ -1,11 +1,9 @@
 import angr
 import claripy
-import sys
-sys.path.append('../../../')
-from information_flow_analysis import analysis
+from information_flow_analysis import analysis, timing
 
 def main():
-    proj = angr.Project('high_sleep_leak.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./high_sleep_leak.out', load_options={'auto_load_libs':False})
     
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
@@ -14,8 +12,8 @@ def main():
     high_addrs = [0x401175, 0x401178]
 
     ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
-    ifa.analyze()
-    return
-  
+    leaks = ifa.analyze()
+    assert len(leaks) == 1 and isinstance(leaks[0], timing.TimingProcedureCallLeak)
+
 if __name__ == "__main__":
     main()
