@@ -29,10 +29,10 @@ def determine_progress_leak(states):
                             break
                     if found:
                         continue
-                    return ProgressLeakProof(branch_instance, state_a, state_b, progress_instance)
+                    return ProgressLeak(branch_instance, state_a, state_b, progress_instance)
     return None
 
-#Returns ProgressLeakProof if a observable diff exists through branching
+#Returns ProgressLeak if a observable diff exists through branching
 #TODO: Merging + pruning of states accumulated from loop iterations
 #TODO: When finding proof state, consider that we might reach another infinite loop (create approx inf loop list from util.termination)
 def test_observer_diff(proj, cfg, state, branching, bound=10):
@@ -49,7 +49,7 @@ def test_observer_diff(proj, cfg, state, branching, bound=10):
         simgr.run()
         diff = test_observer_diff_simgr(simgr.deadended)#simgr.found)
         if diff:
-            return ProgressLeakProof()
+            return ProgressLeak()
     return None
 
 def test_observer_diff_simgr(states):
@@ -115,7 +115,7 @@ class ProgressRecordPlugin(angr.SimStatePlugin):
     def copy(self, memo):
         return ProgressRecordPlugin(self.records, self.callfunction, self.callstate)
 
-class ProgressLeakProof:
+class ProgressLeak:
     def __init__(self, branching, state1, state2, progress_diff):
         self.branching = branching
         self.state1 = state1
@@ -123,4 +123,4 @@ class ProgressLeakProof:
         self.progress_diff = progress_diff
     
     def __repr__(self):
-        return "<ProgressLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", from progress diff: " + str(self.progress_diff) + ">"
+        return "<ProgressLeak @ branching block: " + str(hex(self.branching.block_addr)) + ", from progress diff: " + str(self.progress_diff) + ">"

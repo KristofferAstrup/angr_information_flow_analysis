@@ -36,7 +36,7 @@ def determine_timing_procedure_leak(states):
                 timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[progress_a.index] if progress_a else None
                 timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[progress_b.index] if progress_b else None
                 if calc_procedure_diff(timing_interval_a, timing_interval_b) > 0:
-                    return TimingProcedureLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
+                    return TimingProcedureLeak(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
 
 def calc_procedure_diff(interval_a, interval_b):
     val_a = interval_a.acc if interval_a else 0
@@ -60,7 +60,7 @@ def determine_timing_instruction_leak(states, ins_count_threshold):
                 timing_interval_a = state_a.plugins[ProcedureRecordPlugin.NAME].map[progress_a.index] if progress_a else None
                 timing_interval_b = state_b.plugins[ProcedureRecordPlugin.NAME].map[progress_b.index] if progress_b else None
                 if calc_ins_diff(timing_interval_a, timing_interval_b) > ins_count_threshold:
-                    return TimingEpsilonLeakProof(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
+                    return TimingEpsilonLeak(branch_instance, state_a, state_b, timing_interval_a, timing_interval_b)
 
 def calc_ins_diff(interval_a, interval_b):
     val_a = interval_a.ins_count if interval_a else 0
@@ -111,11 +111,11 @@ def test_timing_leaks(proj, cfg, state, branching, bound=10, epsilon_threshold=0
         for timed_procedure in record_procedures:
             res = get_procedure_diff_acc(states, timed_procedure[0])
             if res:
-                leaks.append(TimingProcedureLeakProof(branching, proc, res[0], res[1], res[2], res[3]))
+                leaks.append(TimingProcedureLeak(branching, proc, res[0], res[1], res[2], res[3]))
 
         (min_state, min, max_state, max) = get_min_max(states)
         if min and abs(max-min) > epsilon_threshold:
-            leaks.append(TimingEpsilonLeakProof(branching, min_state, min, max_state, max))
+            leaks.append(TimingEpsilonLeak(branching, min_state, min, max_state, max))
     
     for addr in hook_addrs:
         proj.unhook(addr)
@@ -247,7 +247,7 @@ class TimingProcedureCallLeak:
     def __repr__(self):
         return "<TimingProcedureCallLeak @ calls: " + str(self.interval.high_arg_calls) + ">"
 
-class TimingProcedureLeakProof:
+class TimingProcedureLeak:
     def __init__(self, branching, state1, state2, interval1, interval2):
         self.branching = branching
         self.state1 = state1
@@ -256,9 +256,9 @@ class TimingProcedureLeakProof:
         self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingProcedureLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", acc1: " + str(self.interval1.acc) + ", acc2: " + str(self.interval2.acc) + ">"
+        return "<TimingProcedureLeak @ branching block: " + str(hex(self.branching.block_addr)) + ", acc1: " + str(self.interval1.acc) + ", acc2: " + str(self.interval2.acc) + ">"
 
-class TimingEpsilonLeakProof:
+class TimingEpsilonLeak:
     def __init__(self, branching, state1, state2, interval1, interval2):
         self.branching = branching
         self.state1 = state1
@@ -267,4 +267,4 @@ class TimingEpsilonLeakProof:
         self.interval2 = interval2
 
     def __repr__(self):
-        return "<TimingEpsilonLeakProof @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + ", diff: " + str(calc_ins_diff(self.interval1, self.interval2)) + ">"
+        return "<TimingEpsilonLeak @ branching block: " + str(hex(self.branching.block_addr)) + ", ins_count1: " + str(self.interval1.ins_count) + ", ins_count2: " + str(self.interval2.ins_count) + ", diff: " + str(calc_ins_diff(self.interval1, self.interval2)) + ">"

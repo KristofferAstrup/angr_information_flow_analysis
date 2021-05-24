@@ -18,7 +18,7 @@ def main():
     assert len(leaks) == 0
 
     leaks = ifa.analyze()
-    assert len(leaks) == 1 and isinstance(leaks[0], timing.TimingEpsilonLeakProof)
+    assert len(leaks) == 1 and isinstance(leaks[0], timing.TimingEpsilonLeak)
 
 if __name__ == "__main__":
     main()

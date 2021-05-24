@@ -13,7 +13,7 @@ def main():
     
     ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
     leaks = ifa.analyze()
-    assert len(leaks) == 1 and isinstance(leaks[0], progress.ProgressLeakProof)
+    assert len(leaks) == 1 and isinstance(leaks[0], progress.ProgressLeak)
     return 0
 
 if __name__ == "__main__":
