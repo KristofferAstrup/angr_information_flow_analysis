@@ -1,4 +1,7 @@
 # Binary Information Flow Analysis tool using Angr
+Angr_information_flow_analysis is an [angr](https://github.com/angr/angr) IFC analysis tool for unix binaries.
+
+## Install
 Install using [`pip install information-flow-analysis`](https://pypi.org/project/information-flow-analysis/#description).
 
 ## Output relevant graphs
