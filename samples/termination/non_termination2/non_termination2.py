@@ -1,75 +1,21 @@
 import angr
-import monkeyhex
-import inspect
-import re
-import time
-from angr import KnowledgeBase
-from angr.sim_variable import SimRegisterVariable, SimConstantVariable
-from angr.code_location import CodeLocation
-from angr.analyses.ddg import ProgramVariable
-from angr.knowledge_plugins.functions.function_manager import FunctionManager
-from angrutils import *
-import networkx as nx
-import angr.analyses.reaching_definitions.dep_graph as dep_graph
-from networkx_query import search_nodes, search_edges
-import matplotlib.pyplot as plt
-import pydot
-from networkx.drawing.nx_pydot import graphviz_layout
+import claripy
 import sys
 sys.path.append('../../../')
-from information_flow_analysis import information, out, explicit, implicit, progress
+from information_flow_analysis import analysis, termination
 
 def main():
     proj = angr.Project('non_termination2.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
-    state = proj.factory.entry_state(args=['./non_termination2.out', arg0])
-    simgr = proj.factory.simgr(state)
-    for byte in arg0.chop(8):
-        state.add_constraints(byte >= '\x20') # ' '
-        state.add_constraints(byte <= '\x7e') # '~'
+    state = proj.factory.entry_state(args=['./non_termination2.out', arg0], add_options={angr.options.UNICORN})
 
-    cfg = information.cfg_emul(proj, simgr, state)
-    cdg = proj.analyses.CDG(cfg = cfg)
+    high_addrs = [0x401155, 0x401158]
 
-    #high_addrs = [0x401155, 0x401158]
-    start_addr = 0x401149 #main entry block
-    #start_node = cfg.model.get_any_node(addr=start_addr)
-
-    t0 = time.process_time()
-
-    loop_seer = angr.exploration_techniques.LoopSeer(cfg=cfg, bound=1000)
-    simgr.use_technique(loop_seer)
-    simgr.explore(find=start_addr)
-    if len(simgr.found) < 1:
-        raise("No main entry block state found!")
-    state = simgr.found[0]
-    simgr.stash(from_stash='active', to_stash='stash')
-    simgr.stash(from_stash='found', to_stash='active')
-    simgr.explore()
-
-    t1 = time.process_time()
-    print("Delta: " + str(t1-t0))
-
-    out.write_stashes(simgr, args=[arg0])
-
-    # post_dom_tree = cdg.get_post_dominators()
-    # dep_graph = explicit.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-
-    
-
-    # branches = implicit.find_high_branches(dep_graph, post_dom_tree, start_node, high_addrs)
-    # print("========EXPLORE========")
-    
-    # print("========DIFF========")
-    # for branch in branches:
-    #     print("========BRANCH========")
-    #     print(branch)
-    #     leak = progress.test_observer_diff(proj, cfg, state, branch)
-    #     if leak:
-    #         print(leak)
-
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs,termination_args=analysis.TerminationArgs(bound=1000))
+    leaks = ifa.analyze()
+    assert len(leaks) > 0 and isinstance(leaks[0], termination.TerminationLeakProof)
     return
 
 if __name__ == "__main__":

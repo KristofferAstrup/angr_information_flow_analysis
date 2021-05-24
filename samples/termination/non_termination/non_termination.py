@@ -1,36 +1,21 @@
 import angr
-import time
-import monkeyhex
-import inspect
-import re
 import claripy
-from angr import KnowledgeBase
-from angr.sim_variable import SimRegisterVariable, SimConstantVariable
-from angr.code_location import CodeLocation
-from angr.analyses.ddg import ProgramVariable
-from angr.knowledge_plugins.functions.function_manager import FunctionManager
-import networkx as nx
-import angr.analyses.reaching_definitions.dep_graph as dep_graph
-from networkx.drawing.nx_pydot import graphviz_layout
 import sys
 sys.path.append('../../../')
-from information_flow_analysis import analysis, information, out, explicit, implicit, progress, termination
+from information_flow_analysis import analysis, termination
 
 def main():
-    proj = angr.Project('samples/termination/non_termination/non_termination.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('non_termination.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./non_termination.out', arg0], add_options={angr.options.UNICORN})
-    for byte in arg0.chop(8):
-        state.add_constraints(byte >= '\x21') # '!'
-        state.add_constraints(byte <= '\x7e') # '~'
 
     high_addrs = [0x401155, 0x401158]
 
-    ifa = analysis.InformationFlowAnalysis(proj, high_addrs, start="main")
-    for leak in ifa.find_covert_leaks():
-        print(leak)
+    ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
+    leaks = ifa.analyze()
+    assert len(leaks) == 1 and isinstance(leaks[0], termination.TerminationLeakProof)
     return
 
 if __name__ == "__main__":

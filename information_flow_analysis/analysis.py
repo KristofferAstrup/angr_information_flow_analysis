@@ -231,7 +231,7 @@ class InformationFlowAnalysis:
         self.implicit_high_block_map = {b.addr : b for b in implicit_high_blocks}
 
     def __bound_reached_handler(self, loopSeer, succ_state):
-        self.s = loopSeer
+        print("Found approximately non-terminating state at " + str(hex(succ_state.addr)) + " by reaching bound")
         loopSeer.cut_succs.append(succ_state)
 
     def __state_step_handler(self, base_state, stashes):
@@ -329,7 +329,7 @@ class InformationFlowAnalysis:
                 for caller in wrapper.predecessors:
                     for arg_reg in arg_regs:
                         offset, size = self.__unwrap_argument_register(arg_reg)
-                        for occ_node in information.find_first_reg_occurences_from_cfg_node(self.project, self.rda_graph, caller, offset, self.start_node.addr, reg_size=size):
+                        for occ_node in information.find_first_reg_occurences_from_cfg_node(self.project, self.rda_graph, caller, offset, [self.start_node.addr], reg_size=size):
                             subject_addrs.append(occ_node.codeloc.ins_addr)
         subject_addrs = list(set(subject_addrs))
         return subject_addrs

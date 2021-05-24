@@ -36,10 +36,10 @@ def draw_everything(proj, simgr, state, start_node=None):
     draw_cfg_dependent_graphs(cfg)
 
     if start_node:
-        print("--RDA_GRAPH--")
-        rda_graph = rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
-        draw_rda_graph(proj, rda_graph)
-        print("Plotted to rda_graph.pdf")
+        print("--PDG--")
+        pdg = rda.get_super_dep_graph_with_linking(proj, cfg, cdg, start_node)
+        draw_pdg(proj, pdg)
+        print("Plotted to pdg.pdf")
 
 def draw_cfg_dependent_graphs(cfg):
     print("--CDG--")
@@ -52,29 +52,25 @@ def draw_cfg_dependent_graphs(cfg):
     draw_tree(postdom, fname="out/postdom.pdf")
     print("Plotted to postdom.pdf")
 
-def draw_rda_graph(proj, rda_graph, fname="out/rda_graph.pdf"):
+def draw_pdg(proj, pdg, fname="out/pdg.pdf"):
     if not os.path.isdir("out"):
         os.mkdir("out")
 
     fig = plt.figure(figsize=(100,100))
     color_map = {0: 0.5, 1: 0.25, 2: 0}
-    colors = [color_map[node.sec_class] for node in rda_graph.nodes()]
-    pos = nx.spring_layout(rda_graph)
-    nx.draw_networkx_nodes(rda_graph, cmap=plt.cm.Set1, node_color=colors, pos=pos)#, node_size=1500)
-    nx.draw_networkx_labels(rda_graph, pos)
-    # for e in rda_graph.edges:
-    #     t = rda_graph.get_edge_data(e[0],e[1])['type']
-    #     print(t)
-    edge_labels = {edge: ("implicit" if rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1 else "explicit") for edge in rda_graph.edges}
-    #edge_color = {edge.type for edge in rda_graph.edges}
-    explicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 0, rda_graph.edges))
-    implicit_edges = list(filter(lambda edge: rda_graph.get_edge_data(edge[0],edge[1])['type'] == 1, rda_graph.edges))
-    nx.draw_networkx_edges(rda_graph, style="solid", edgelist=explicit_edges, pos=pos, width=2.5)
-    nx.draw_networkx_edges(rda_graph, style="dotted", edgelist=implicit_edges, pos=pos, width=2.5, alpha=0.5)
-    nx.draw_networkx_edge_labels(rda_graph, pos=pos, edge_labels=edge_labels)
+    colors = [color_map[node.sec_class] for node in pdg.nodes()]
+    pos = nx.spring_layout(pdg)
+    nx.draw_networkx_nodes(pdg, cmap=plt.cm.Set1, node_color=colors, pos=pos)
+    nx.draw_networkx_labels(pdg, pos)
+    edge_labels = {edge: ("implicit" if pdg.get_edge_data(edge[0],edge[1])['type'] == 1 else "explicit") for edge in pdg.edges}
+    explicit_edges = list(filter(lambda edge: pdg.get_edge_data(edge[0],edge[1])['type'] == 0, pdg.edges))
+    implicit_edges = list(filter(lambda edge: pdg.get_edge_data(edge[0],edge[1])['type'] == 1, pdg.edges))
+    nx.draw_networkx_edges(pdg, style="solid", edgelist=explicit_edges, pos=pos, width=2.5)
+    nx.draw_networkx_edges(pdg, style="dotted", edgelist=implicit_edges, pos=pos, width=2.5, alpha=0.5)
+    nx.draw_networkx_edge_labels(pdg, pos=pos, edge_labels=edge_labels)
     fig.savefig(fname, dpi=5)
 
-def draw_everything_with_data(proj, cfg_emul, cfg_fast, cdg, postdom, rda_graph):
+def draw_everything_with_data(proj, cfg_emul, cfg_fast, cdg, postdom, pdg):
     if not os.path.isdir("out"):
         os.mkdir("out")
     
@@ -94,9 +90,9 @@ def draw_everything_with_data(proj, cfg_emul, cfg_fast, cdg, postdom, rda_graph)
     draw_tree(postdom, fname="out/postdom.pdf")
     print("Plotted to postdom.pdf")
 
-    print("--RDA_GRAPH--")
-    draw_rda_graph(proj, rda_graph)
-    print("Plotted to rda_graph.pdf")
+    print("--PDG--")
+    draw_pdg(proj, pdg)
+    print("Plotted to pdg.pdf")
 
 def write_stashes(simgr, filename="stash_summary.txt", args=[], input_write_stashes=[], verbose=True):
     file = open(filename,"w+") 

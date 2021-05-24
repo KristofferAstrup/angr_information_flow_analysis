@@ -1,8 +1,6 @@
 import angr
 import claripy
-import sys
-sys.path.append('../../../')
-from information_flow_analysis import analysis
+from information_flow_analysis import analysis, implicit
 
 def main():
     proj = angr.Project('implicit2.out', load_options={'auto_load_libs':False})
@@ -13,7 +11,8 @@ def main():
     high_addrs = [0x401155, 0x401158]
     
     ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
-    ifa.analyze()
+    leaks = ifa.analyze()
+    assert len(leaks) == 2 and isinstance(leaks[0], implicit.ImplicitLeak) and isinstance(leaks[1], implicit.ImplicitLeak)
     return 0
     
 if __name__ == "__main__":

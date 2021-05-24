@@ -203,18 +203,18 @@ def get_rda_reg_vars(rda_graph, ins_addr):
         if isinstance(node.atom,angr.knowledge_plugins.key_definitions.atoms.Register) and node.atom:
             yield node
 
-def find_first_reg_occurences_from_cfg_node(project, rda_graph, cfg_node, reg_offset, stop_block_addr, reg_size=None, ins_offset = None):
+def find_first_reg_occurences_from_cfg_node(project, rda_graph, cfg_node, reg_offset, terminating_block_addrs, reg_size=None, ins_offset = None):
     occ_addr = find_first_reg_occurences_in_block(project, cfg_node.block, reg_offset, ins_offset)
     if occ_addr:
         for reg_var in get_rda_reg_vars(rda_graph, occ_addr):
             if reg_var and reg_var.atom.reg_offset == reg_offset and (reg_var.atom.size == reg_size if reg_size else True):
                 return [reg_var]
         return []
-    if cfg_node.addr == stop_block_addr:
+    if cfg_node.addr in terminating_block_addrs:
         return []
     occs = []
     for n in cfg_node.predecessors:
-        occ = find_first_reg_occurences_from_cfg_node(project, rda_graph, n, reg_offset, stop_block_addr, None)
+        occ = find_first_reg_occurences_from_cfg_node(project, rda_graph, n, reg_offset, terminating_block_addrs + [cfg_node.addr], None)
         occs.extend(occ)
     return occs
 
