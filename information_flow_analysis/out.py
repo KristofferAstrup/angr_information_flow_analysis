@@ -30,6 +30,22 @@ def cfgs(proj, simgr, state):
         print(e)
     return cfg_emul
 
+def transform_cfg_reachable(cfg, start_addr):
+    start_node = None
+    for n in cfg.graph.nodes:
+        if n.addr == start_addr:
+            start_node = n
+            break
+    if not start_node:
+        raise Exception("Failed to find start node!")
+    reachable_nodes = networkx.descendants(cfg.graph, start_node)
+    excluded_nodes = []
+    for n in cfg.graph.nodes:
+        if (not n in reachable_nodes) and (not n == start_node):
+            excluded_nodes.append(n)
+    cfg.graph.remove_nodes_from(excluded_nodes)
+    return cfg
+
 def draw_everything(proj, simgr, state, start_node=None):
     cfg = cfgs(proj, simgr, state)
 

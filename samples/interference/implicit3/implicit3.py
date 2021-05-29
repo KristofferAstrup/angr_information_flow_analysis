@@ -3,7 +3,7 @@ import claripy
 from information_flow_analysis import analysis, implicit
 
 def main():
-    proj = angr.Project('implicit3.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('./implicit3.out', load_options={'auto_load_libs':False})
 
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)

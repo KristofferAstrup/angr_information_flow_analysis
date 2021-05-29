@@ -36,6 +36,7 @@ class InformationFlowAnalysis:
 
     def draw_everything(self):
         self.cfg_fast = self.project.analyses.CFGFast()
+        self.cfg_fast = out.transform_cfg_reachable(self.cfg_fast, self.start_node.addr)
         out.draw_everything_with_data(self.project, self.cfg, self.cfg_fast, self.cdg, self.post_dom_tree, self.rda_graph)
 
     def set_termination_args(self, termination_args):
