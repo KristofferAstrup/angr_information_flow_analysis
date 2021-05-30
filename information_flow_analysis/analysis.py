@@ -168,6 +168,8 @@ class InformationFlowAnalysis:
             if verbose:
                 print("Found " + str(len(spinning_states)) + " approximately non-terminating states")
             for spinning_state in spinning_states:
+                if not spinning_state.addr in self.implicit_high_block_map:
+                    continue
                 leak = termination.determine_termination_leak(spinning_state, simgr.deadended)
                 if leak:
                     if verbose:
