@@ -1,9 +1,11 @@
 import angr
 import claripy
+import sys
+sys.path.append('../../../')
 from information_flow_analysis import analysis
 
 def main():
-    proj = angr.Project('./high_sleep_no_leak.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('samples/timing/high_sleep_no_leak/high_sleep_no_leak.out', load_options={'auto_load_libs':False})
     
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)

@@ -11,13 +11,8 @@ def determine_termination_leak(nonterm_state, term_states):
         for branch_instance in nonterm_state.plugins[implicit.BranchRecordPlugin.NAME].records:
             if not branch_instance in term_state.plugins[implicit.BranchRecordPlugin.NAME].records:
                 continue
-            for progress_instance in term_state.plugins[progress.ProgressRecordPlugin.NAME].records:
-                if progress_instance.depth < branch_instance.depth:
-                    continue
-                if progress_instance in nonterm_state.plugins[progress.ProgressRecordPlugin.NAME].records:
-                    continue
-                non_term_loop = get_nonterm_loop(nonterm_state)
-                return TerminationLeak(non_term_loop, nonterm_state, term_state, progress_instance)
+            non_term_loop = get_nonterm_loop(nonterm_state)
+            return TerminationLeak(non_term_loop, nonterm_state, term_state)
     return None
 
 def get_termination_leak(rda_graph, cfg, high_addrs, spinning_state, progress_states): 
@@ -85,12 +80,13 @@ def get_closest_common_ancestor(his1, his2):
             return None
     return his1[i]
 
+TERM = "TERM"
+
 class TerminationLeak:
-    def __init__(self, loop, spinning_state, progress_state, progress_diff):
+    def __init__(self, loop, spinning_state, term_state):
         self.loop = loop,
         self.spinning_state = spinning_state
-        self.progress_state = progress_state
-        self.progress_diff = progress_diff
+        self.term_state = term_state
     
     def __repr__(self):
-        return "<TerminationLeak @ loop: " + str(self.loop) + ", loop state : " + str(self.spinning_state) + ", progress state: " + str(self.progress_state) + ", progress diff: " + str(self.progress_diff) + ">"
+        return "<TerminationLeak @ loop: " + str(self.loop) + ", loop state : " + str(self.spinning_state) + ", terminating state: " + str(self.term_state) + ">"

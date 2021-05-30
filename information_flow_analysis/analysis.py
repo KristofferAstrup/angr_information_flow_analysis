@@ -145,7 +145,7 @@ class InformationFlowAnalysis:
         
         start_state.register_plugin(implicit.BranchRecordPlugin.NAME, implicit.BranchRecordPlugin([]))
         start_state.register_plugin(progress.ProgressRecordPlugin.NAME, progress.ProgressRecordPlugin([],None,None))
-        start_state.register_plugin(timing.ProcedureRecordPlugin.NAME, timing.ProcedureRecordPlugin({},timing.TimingInterval(0,0)))
+        start_state.register_plugin(timing.TimingPlugin.NAME, timing.TimingPlugin({},timing.TimingInterval(0,0)))
         
         simgr = self.project.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=termination_args.bound, limit_concrete_loops=True, bound_reached=self.__bound_reached_handler))
@@ -155,6 +155,11 @@ class InformationFlowAnalysis:
             if len(simgr.active) == 0:
                 break
             simgr.step()
+
+        for term_state in simgr.deadended:
+            progress_plugin = term_state.plugins[progress.ProgressRecordPlugin.NAME]
+            prev_progress_depth = progress_plugin.records[len(progress_plugin.records)-1].depth if len(progress_plugin.records) > 0 else -1
+            self.__save_timing(term_state, termination.TERM, prev_progress_depth)
 
         #Termination
         if termination_args.included:
@@ -191,7 +196,7 @@ class InformationFlowAnalysis:
 
         #Timing
         if timing_args.included:
-            timing_procedure_call_leaks = timing.determine_timing_procedure_call_leaks(states)
+            timing_procedure_call_leaks = timing.determine_timing_procedure_call_leaks(states, simgr.deadended)
             if len(timing_procedure_call_leaks) > 0:
                 if verbose:
                     print("Found " + str(len(timing_procedure_call_leaks)) + " timing procedure call leaks:")
@@ -199,7 +204,7 @@ class InformationFlowAnalysis:
                         print(leak)
                 return timing_procedure_call_leaks
 
-            timing_procedure_leak = timing.determine_timing_procedure_leak(states)
+            timing_procedure_leak = timing.determine_timing_procedure_leak(states, simgr.deadended)
             if timing_procedure_leak:
                 if verbose:
                     print("Found timing procedure leak:")
@@ -208,7 +213,7 @@ class InformationFlowAnalysis:
             if verbose:
                 print("Found no timing procedure leaks")
 
-            timing_instruction_leak = timing.determine_timing_instruction_leak(states, timing_args.epsilon)
+            timing_instruction_leak = timing.determine_timing_instruction_leak(states, simgr.deadended, timing_args.epsilon)
             if timing_instruction_leak:
                 if verbose:
                     print("Found timing instruction leak:")
@@ -265,7 +270,7 @@ class InformationFlowAnalysis:
 
     def __timing_function_call(self, state, name):
         timing_func = self.__timing_function_map[name]
-        plugin = state.plugins[timing.ProcedureRecordPlugin.NAME]
+        plugin = state.plugins[timing.TimingPlugin.NAME]
 
         high_arg_regs = []
         for arg_reg in timing_func.registers:
@@ -300,9 +305,12 @@ class InformationFlowAnalysis:
         plugin.callfunction = None
         plugin.callstate = None
         plugin.records.append(progress_record)
-        timing_plugin = state.plugins[timing.ProcedureRecordPlugin.NAME]
+        self.__save_timing(state, len(plugin.records)-1, prev_progress_depth)
+        
+    def __save_timing(self, state, key, prev_progress_depth):
+        timing_plugin = state.plugins[timing.TimingPlugin.NAME]
         timing_plugin.temp_interval.ins_count = timing.get_history_high_instruction_count(state, prev_progress_depth, self.implicit_high_block_map)
-        timing_plugin.map[len(plugin.records)-1] = timing_plugin.temp_interval
+        timing_plugin.map[key] = timing_plugin.temp_interval
         timing_plugin.temp_interval = timing.TimingInterval(0,0)
 
     def __default_termination_args(self):
@@ -368,7 +376,7 @@ class StateStepBreakpoint(angr.exploration_techniques.ExplorationTechnique):
         return res
 
 class TerminationArgs():
-    def __init__(self, bound=50, included=True):
+    def __init__(self, termination_observable=True, bound=50, included=True):
         self.bound = bound
         self.included = included
 
