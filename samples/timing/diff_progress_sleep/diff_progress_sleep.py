@@ -9,7 +9,7 @@ def main():
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
     state = proj.factory.entry_state(args=['./diff_progress_sleep.out', arg0])
 
-    high_addrs = [0x401175, 0x401178]
+    high_addrs = [0x401195, 0x401198]
 
     ifa = analysis.InformationFlowAnalysis(proj=proj,state=state,start="main",high_addrs=high_addrs)
     leaks = ifa.analyze()
