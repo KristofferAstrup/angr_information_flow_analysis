@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int printer(int argc)
+void printer(int argc)
 {
     char* str = "one";
     if(argc == 2)
