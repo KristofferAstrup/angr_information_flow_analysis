@@ -150,6 +150,7 @@ class InformationFlowAnalysis:
         simgr = self.project.factory.simgr(start_state)
         simgr.use_technique(angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=termination_args.bound, limit_concrete_loops=True, bound_reached=self.__bound_reached_handler))
         simgr.use_technique(StateStepBreakpoint(action=self.__state_step_handler))
+        self.__covert_non_termination_bound = termination_args.bound
 
         while(True):
             if len(simgr.active) == 0:
@@ -237,7 +238,7 @@ class InformationFlowAnalysis:
         self.implicit_high_block_map = {b.addr : b for b in implicit_high_blocks}
 
     def __bound_reached_handler(self, loopSeer, succ_state):
-        print("Found approximately non-terminating state at " + str(hex(succ_state.addr)) + " by reaching bound")
+        print("Found approximately non-terminating state at " + str(hex(succ_state.addr)) + " by reaching iteration bound " + str(self.__covert_non_termination_bound))
         loopSeer.cut_succs.append(succ_state)
 
     def __state_step_handler(self, base_state, stashes):

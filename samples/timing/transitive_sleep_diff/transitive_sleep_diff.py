@@ -1,11 +1,9 @@
 import angr
 import claripy
-import sys
-sys.path.append('../../../')
 from information_flow_analysis import analysis, timing
 
 def main():
-    proj = angr.Project('samples/timing/transitive_sleep_diff/transitive_sleep_diff.out', load_options={'auto_load_libs':False})
+    proj = angr.Project('transitive_sleep_diff.out', load_options={'auto_load_libs':False})
     
     sym_arg_size = 15
     arg0 = claripy.BVS('arg0', 8*sym_arg_size)
